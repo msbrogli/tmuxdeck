@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - backend-data:/data
+      - ./docker/templates:/app/docker/templates:ro
+      - /tmp/tmux-${HOST_UID:-1000}:/tmp/tmux-host
+    environment:
+      - HOST_TMUX_SOCKET=/tmp/tmux-host/default
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-data:
