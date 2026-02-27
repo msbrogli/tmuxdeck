@@ -25,9 +25,14 @@
         pythonRuntime = python.withPackages (ps: with ps; [
           fastapi
           uvicorn
+          uvloop
+          httptools
+          websockets
           docker
           pydantic-settings
           python-multipart
+          # python-telegram-bot has a broken test in nixpkgs, skip checks
+          (python-telegram-bot.overridePythonAttrs { doCheck = false; })
         ]);
 
         # Backend Python environment with all dependencies (dev included)
@@ -78,8 +83,10 @@
           name = "tmuxdeck";
           runtimeInputs = [ pythonRuntime ];
           text = ''
-            export STATIC_DIR="${frontend}"
+            export STATIC_DIR="''${STATIC_DIR:-${frontend}}"
             export PYTHONPATH="${backend}/lib/tmuxdeck-backend"
+            export DATA_DIR="''${DATA_DIR:-''${XDG_DATA_HOME:-$HOME/.local/share}/tmuxdeck}"
+            mkdir -p "$DATA_DIR"
             exec uvicorn app.main:app \
               --host "''${HOST:-127.0.0.1}" \
               --port "''${PORT:-8000}"
