@@ -1,0 +1,529 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		096201C8CAA3C0A7C97F18F4 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 5E4B4635E922C330F06C09E3 /* SwiftTerm */; };
+		0E2824552EAAE73CABA5925E /* SwiftTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD7F873CFE75C8F5D932B79 /* SwiftTerminalView.swift */; };
+		1407834E76F0AB943AD66453 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB22F2DAB7BB373DDECE5598 /* KeychainService.swift */; };
+		1ABE3E18D18E270BA94F6093 /* PINEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E8135056B70D922588C40F /* PINEntryView.swift */; };
+		1BB1F8F2B0B7C7E546247EAF /* Notification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ECB4A2D15677E60D026B600 /* Notification.swift */; };
+		2907D329C8F50D2D9EA2AA41 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B2F64173B314DF5311EDC7 /* Extensions.swift */; };
+		29286115569DCBDD865D063A /* ContainerListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E070621690ECD1CE264C5FA /* ContainerListViewModel.swift */; };
+		461524E5A72A41E131150E3F /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B625C7D9E33A0A618DAC7A7A /* AppSettings.swift */; };
+		47B2D4FBE84F3BC13D83C7D5 /* ContainerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9613A14904CC2912F5FFA6AC /* ContainerListView.swift */; };
+		4D382F1D3C0EBE02DEB04217 /* Template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686942F4D99F06B7885077E8 /* Template.swift */; };
+		4E67F0D90E625983EB83B316 /* TerminalScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4055CA80FEA96AEF1374EE2 /* TerminalScreen.swift */; };
+		65185A207852689F390D76D4 /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 941467C20EB764272F1D06BA /* ServerConfig.swift */; };
+		6969A863EB4F260CAEAECD56 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C7D1704E378227EEEF9676 /* NotificationService.swift */; };
+		6EFE257DCC726B114B6361CC /* WindowTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4956421714875789CFB033 /* WindowTabBar.swift */; };
+		86F766C8DB0D8E3602F63B3B /* ServerSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516AD7EF300F0CBE05405B33 /* ServerSetupView.swift */; };
+		88C4169D5F01234590FC33CB /* TmuxDeckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 261C4D2F431E7CA11360C596 /* TmuxDeckApp.swift */; };
+		9A7674BE9BE5C6D92AC78195 /* TmuxSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26BB8E7ABEEEE4F61AC5051 /* TmuxSession.swift */; };
+		9E657EE5E73B52000CB2BDEC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EF7A3913B4177998404AFF1 /* ContentView.swift */; };
+		B56220BD82C5CF96090C3D19 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CED3CBE52D00730CA7462F /* AppState.swift */; };
+		B6A44FE2CF236E534DF8FE54 /* QuickSwitcherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 157A8ADDD1991157AFFDB72D /* QuickSwitcherView.swift */; };
+		BE6C8A1899AE21A7D055B94D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9E1FFC9E7BBBFD41A9F6AF8 /* SettingsView.swift */; };
+		C4A78C4CDA41EE4F6147A74E /* TmuxWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BA8E70C356D254EC0FCAA5 /* TmuxWindow.swift */; };
+		CB028C32CA0584B8F9A94205 /* SessionTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F9863E3C5238A8AA14DECA /* SessionTreeView.swift */; };
+		DA44242466EC043F2DF42DB8 /* TerminalViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE16EB0ACFF68EF6709EFFC0 /* TerminalViewModel.swift */; };
+		DDEDB77932CAAB9946C39BB3 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E7522FE08F56239F110058 /* AuthModels.swift */; };
+		E3C52D9B52A649327C2CA3D3 /* TerminalConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBEB8C5D8C1DAF1931DFC608 /* TerminalConnection.swift */; };
+		ED5928B56FA6CEE7F848D5C9 /* Container.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34AD7876BDC9CADB44E3E970 /* Container.swift */; };
+		F29C7F08180F420215552B15 /* ServerDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2441E989B56993C50B07B3 /* ServerDiscovery.swift */; };
+		FA2A11E1FA826AF2345F1C5F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304971475A69816599336A8D /* APIClient.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		157A8ADDD1991157AFFDB72D /* QuickSwitcherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSwitcherView.swift; sourceTree = "<group>"; };
+		261C4D2F431E7CA11360C596 /* TmuxDeckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxDeckApp.swift; sourceTree = "<group>"; };
+		304971475A69816599336A8D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		34AD7876BDC9CADB44E3E970 /* Container.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Container.swift; sourceTree = "<group>"; };
+		35E8135056B70D922588C40F /* PINEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PINEntryView.swift; sourceTree = "<group>"; };
+		3ECB4A2D15677E60D026B600 /* Notification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notification.swift; sourceTree = "<group>"; };
+		46E7522FE08F56239F110058 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		516AD7EF300F0CBE05405B33 /* ServerSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSetupView.swift; sourceTree = "<group>"; };
+		5E070621690ECD1CE264C5FA /* ContainerListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerListViewModel.swift; sourceTree = "<group>"; };
+		5EF7A3913B4177998404AFF1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		686942F4D99F06B7885077E8 /* Template.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Template.swift; sourceTree = "<group>"; };
+		69C7D1704E378227EEEF9676 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		76CED3CBE52D00730CA7462F /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		790F028673ACE4EFECEF7B93 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		84B2F64173B314DF5311EDC7 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		941467C20EB764272F1D06BA /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
+		9613A14904CC2912F5FFA6AC /* ContainerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerListView.swift; sourceTree = "<group>"; };
+		A26BB8E7ABEEEE4F61AC5051 /* TmuxSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxSession.swift; sourceTree = "<group>"; };
+		A3BA8E70C356D254EC0FCAA5 /* TmuxWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxWindow.swift; sourceTree = "<group>"; };
+		B625C7D9E33A0A618DAC7A7A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		BB4956421714875789CFB033 /* WindowTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTabBar.swift; sourceTree = "<group>"; };
+		BE16EB0ACFF68EF6709EFFC0 /* TerminalViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewModel.swift; sourceTree = "<group>"; };
+		C4055CA80FEA96AEF1374EE2 /* TerminalScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalScreen.swift; sourceTree = "<group>"; };
+		D5606A5197D111358241F62E /* TmuxDeck.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TmuxDeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D6F9863E3C5238A8AA14DECA /* SessionTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTreeView.swift; sourceTree = "<group>"; };
+		DBEB8C5D8C1DAF1931DFC608 /* TerminalConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalConnection.swift; sourceTree = "<group>"; };
+		EA2441E989B56993C50B07B3 /* ServerDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerDiscovery.swift; sourceTree = "<group>"; };
+		EB22F2DAB7BB373DDECE5598 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		F9E1FFC9E7BBBFD41A9F6AF8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		FBD7F873CFE75C8F5D932B79 /* SwiftTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftTerminalView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E2565BC3A350D68446AC73F9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				096201C8CAA3C0A7C97F18F4 /* SwiftTerm in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0FF528FB34D40B1C8FA9BA10 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				FBD7F873CFE75C8F5D932B79 /* SwiftTerminalView.swift */,
+				C4055CA80FEA96AEF1374EE2 /* TerminalScreen.swift */,
+				BB4956421714875789CFB033 /* WindowTabBar.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+		133438B363631584FCD27E58 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				84B2F64173B314DF5311EDC7 /* Extensions.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		204F4620831FD742BEDCF819 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				304971475A69816599336A8D /* APIClient.swift */,
+				EB22F2DAB7BB373DDECE5598 /* KeychainService.swift */,
+				69C7D1704E378227EEEF9676 /* NotificationService.swift */,
+				EA2441E989B56993C50B07B3 /* ServerDiscovery.swift */,
+				DBEB8C5D8C1DAF1931DFC608 /* TerminalConnection.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		28D5FBBEA84E0B71EFDD81A6 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B625C7D9E33A0A618DAC7A7A /* AppSettings.swift */,
+				46E7522FE08F56239F110058 /* AuthModels.swift */,
+				34AD7876BDC9CADB44E3E970 /* Container.swift */,
+				3ECB4A2D15677E60D026B600 /* Notification.swift */,
+				941467C20EB764272F1D06BA /* ServerConfig.swift */,
+				686942F4D99F06B7885077E8 /* Template.swift */,
+				A26BB8E7ABEEEE4F61AC5051 /* TmuxSession.swift */,
+				A3BA8E70C356D254EC0FCAA5 /* TmuxWindow.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		307FA9C6833EE65AEBE71A1F /* TmuxDeck */ = {
+			isa = PBXGroup;
+			children = (
+				5EF7A3913B4177998404AFF1 /* ContentView.swift */,
+				790F028673ACE4EFECEF7B93 /* Info.plist */,
+				261C4D2F431E7CA11360C596 /* TmuxDeckApp.swift */,
+				28D5FBBEA84E0B71EFDD81A6 /* Models */,
+				204F4620831FD742BEDCF819 /* Services */,
+				133438B363631584FCD27E58 /* Utilities */,
+				69518B70E4A22DD67CEB677B /* ViewModels */,
+				872DC625E836696C2DA7B1DC /* Views */,
+			);
+			path = TmuxDeck;
+			sourceTree = "<group>";
+		};
+		546C7B75F7153FE4AEB08622 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				F9E1FFC9E7BBBFD41A9F6AF8 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		69518B70E4A22DD67CEB677B /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				76CED3CBE52D00730CA7462F /* AppState.swift */,
+				5E070621690ECD1CE264C5FA /* ContainerListViewModel.swift */,
+				BE16EB0ACFF68EF6709EFFC0 /* TerminalViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		7C020669BDC3CF9F6909EFF7 /* Containers */ = {
+			isa = PBXGroup;
+			children = (
+				9613A14904CC2912F5FFA6AC /* ContainerListView.swift */,
+				D6F9863E3C5238A8AA14DECA /* SessionTreeView.swift */,
+			);
+			path = Containers;
+			sourceTree = "<group>";
+		};
+		872DC625E836696C2DA7B1DC /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				C16D374C162F80696B6D979A /* Auth */,
+				7C020669BDC3CF9F6909EFF7 /* Containers */,
+				8A8461940ACCDC848593275C /* ServerSetup */,
+				909A64DEE2A41C146061090E /* SessionSwitcher */,
+				546C7B75F7153FE4AEB08622 /* Settings */,
+				0FF528FB34D40B1C8FA9BA10 /* Terminal */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		8A8461940ACCDC848593275C /* ServerSetup */ = {
+			isa = PBXGroup;
+			children = (
+				516AD7EF300F0CBE05405B33 /* ServerSetupView.swift */,
+			);
+			path = ServerSetup;
+			sourceTree = "<group>";
+		};
+		909A64DEE2A41C146061090E /* SessionSwitcher */ = {
+			isa = PBXGroup;
+			children = (
+				157A8ADDD1991157AFFDB72D /* QuickSwitcherView.swift */,
+			);
+			path = SessionSwitcher;
+			sourceTree = "<group>";
+		};
+		B45F1F831427ACE8D6E588A3 = {
+			isa = PBXGroup;
+			children = (
+				307FA9C6833EE65AEBE71A1F /* TmuxDeck */,
+				F47CEF1F42BFCD5C5C910A97 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C16D374C162F80696B6D979A /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				35E8135056B70D922588C40F /* PINEntryView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		F47CEF1F42BFCD5C5C910A97 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D5606A5197D111358241F62E /* TmuxDeck.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1DABA7AD2F7F92572D049BE3 /* TmuxDeck */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE64E4A29078088965D2284E /* Build configuration list for PBXNativeTarget "TmuxDeck" */;
+			buildPhases = (
+				0B381C9CA8C9FEE5BF8E55B3 /* Sources */,
+				E2565BC3A350D68446AC73F9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TmuxDeck;
+			packageProductDependencies = (
+				5E4B4635E922C330F06C09E3 /* SwiftTerm */,
+			);
+			productName = TmuxDeck;
+			productReference = D5606A5197D111358241F62E /* TmuxDeck.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		408C213C5E642F69ED8D0E8B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					1DABA7AD2F7F92572D049BE3 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = C6740679D786C8E8E3D16601 /* Build configuration list for PBXProject "TmuxDeck" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = B45F1F831427ACE8D6E588A3;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				675D693787911AA1DA7918F3 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1DABA7AD2F7F92572D049BE3 /* TmuxDeck */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0B381C9CA8C9FEE5BF8E55B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA2A11E1FA826AF2345F1C5F /* APIClient.swift in Sources */,
+				461524E5A72A41E131150E3F /* AppSettings.swift in Sources */,
+				B56220BD82C5CF96090C3D19 /* AppState.swift in Sources */,
+				DDEDB77932CAAB9946C39BB3 /* AuthModels.swift in Sources */,
+				ED5928B56FA6CEE7F848D5C9 /* Container.swift in Sources */,
+				47B2D4FBE84F3BC13D83C7D5 /* ContainerListView.swift in Sources */,
+				29286115569DCBDD865D063A /* ContainerListViewModel.swift in Sources */,
+				9E657EE5E73B52000CB2BDEC /* ContentView.swift in Sources */,
+				2907D329C8F50D2D9EA2AA41 /* Extensions.swift in Sources */,
+				1407834E76F0AB943AD66453 /* KeychainService.swift in Sources */,
+				1BB1F8F2B0B7C7E546247EAF /* Notification.swift in Sources */,
+				6969A863EB4F260CAEAECD56 /* NotificationService.swift in Sources */,
+				1ABE3E18D18E270BA94F6093 /* PINEntryView.swift in Sources */,
+				B6A44FE2CF236E534DF8FE54 /* QuickSwitcherView.swift in Sources */,
+				65185A207852689F390D76D4 /* ServerConfig.swift in Sources */,
+				F29C7F08180F420215552B15 /* ServerDiscovery.swift in Sources */,
+				86F766C8DB0D8E3602F63B3B /* ServerSetupView.swift in Sources */,
+				CB028C32CA0584B8F9A94205 /* SessionTreeView.swift in Sources */,
+				BE6C8A1899AE21A7D055B94D /* SettingsView.swift in Sources */,
+				0E2824552EAAE73CABA5925E /* SwiftTerminalView.swift in Sources */,
+				4D382F1D3C0EBE02DEB04217 /* Template.swift in Sources */,
+				E3C52D9B52A649327C2CA3D3 /* TerminalConnection.swift in Sources */,
+				4E67F0D90E625983EB83B316 /* TerminalScreen.swift in Sources */,
+				DA44242466EC043F2DF42DB8 /* TerminalViewModel.swift in Sources */,
+				88C4169D5F01234590FC33CB /* TmuxDeckApp.swift in Sources */,
+				9A7674BE9BE5C6D92AC78195 /* TmuxSession.swift in Sources */,
+				C4A78C4CDA41EE4F6147A74E /* TmuxWindow.swift in Sources */,
+				6EFE257DCC726B114B6361CC /* WindowTabBar.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5A28BD22864C74130E08CB4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A56D663D38C5CEBDAF519576 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CFC0C9AFB2E884C6EEE46AF7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TmuxDeck/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tmuxdeck.app;
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D74BFFCF00C03EFBA0DB4AB1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TmuxDeck/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tmuxdeck.app;
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C6740679D786C8E8E3D16601 /* Build configuration list for PBXProject "TmuxDeck" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A28BD22864C74130E08CB4C /* Debug */,
+				A56D663D38C5CEBDAF519576 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CE64E4A29078088965D2284E /* Build configuration list for PBXNativeTarget "TmuxDeck" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D74BFFCF00C03EFBA0DB4AB1 /* Debug */,
+				CFC0C9AFB2E884C6EEE46AF7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		675D693787911AA1DA7918F3 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5E4B4635E922C330F06C09E3 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 675D693787911AA1DA7918F3 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 408C213C5E642F69ED8D0E8B /* Project object */;
+}
