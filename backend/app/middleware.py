@@ -26,6 +26,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
             return await call_next(request)
 
+        # Skip static file serving (SPA entry point + non-API paths served by StaticFiles)
+        if not path.startswith("/api/") and not path.startswith("/ws/"):
+            return await call_next(request)
+
         # Skip notification POST endpoints (hook calls from containers)
         if request.method == "POST" and path in _PUBLIC_EXACT_POST:
             return await call_next(request)
