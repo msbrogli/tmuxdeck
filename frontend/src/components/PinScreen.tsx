@@ -94,7 +94,10 @@ export function PinScreen({ mode, onSuccess }: PinScreenProps) {
           <p className="text-sm text-gray-500">{subtitle}</p>
         </div>
 
-        <div className="flex justify-center gap-3">
+        <div
+          className="relative flex justify-center gap-3 cursor-text"
+          onClick={() => inputRef.current?.focus()}
+        >
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
@@ -107,24 +110,23 @@ export function PinScreen({ mode, onSuccess }: PinScreenProps) {
               {i < currentValue.length ? '\u2022' : ''}
             </div>
           ))}
+          <input
+            ref={inputRef}
+            type="tel"
+            inputMode="numeric"
+            pattern="\d*"
+            maxLength={4}
+            value={currentValue}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+              setCurrentValue(v);
+              setError('');
+            }}
+            className="absolute inset-0 opacity-0 cursor-text"
+            autoFocus
+            autoComplete="off"
+          />
         </div>
-
-        <input
-          ref={inputRef}
-          type="tel"
-          inputMode="numeric"
-          pattern="\d*"
-          maxLength={4}
-          value={currentValue}
-          onChange={(e) => {
-            const v = e.target.value.replace(/\D/g, '').slice(0, 4);
-            setCurrentValue(v);
-            setError('');
-          }}
-          className="sr-only"
-          autoFocus
-          autoComplete="off"
-        />
 
         {error && (
           <p className="text-center text-sm text-red-400">{error}</p>
