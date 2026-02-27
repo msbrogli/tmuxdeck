@@ -27,6 +27,7 @@ class NotificationRecord:
     status: str = "pending"  # pending | telegram_sent | dismissed
     telegram_message_id: int | None = None
     telegram_chat_id: int | None = None
+    channels: list[str] = field(default_factory=lambda: ["web", "os", "telegram"])
     responses: list[str] = field(default_factory=list)
     _timer_task: asyncio.Task | None = field(default=None, repr=False)
 
@@ -42,6 +43,7 @@ class NotificationRecord:
             "tmuxWindow": self.tmux_window,
             "createdAt": self.created_at,
             "status": self.status,
+            "channels": self.channels,
         }
 
 
@@ -52,7 +54,6 @@ class NotificationManager:
         self._notifications: dict[str, NotificationRecord] = {}
         self._sse_subscribers: set[asyncio.Queue[dict | None]] = set()
         self._telegram_bot: Any = None  # Set after TelegramBot is created
-        self._timeout_secs: int = 60
 
     @classmethod
     def get(cls) -> NotificationManager:
@@ -63,10 +64,16 @@ class NotificationManager:
     def set_telegram_bot(self, bot: Any) -> None:
         self._telegram_bot = bot
 
-    def set_timeout(self, secs: int) -> None:
-        self._timeout_secs = secs
+    def _get_timeout(self) -> int:
+        from .. import store
+        settings = store.get_settings()
+        return settings.get("telegramNotificationTimeoutSecs", 60)
 
     def create(self, data: dict[str, Any]) -> NotificationRecord:
+        all_channels = ["web", "os", "telegram"]
+        raw_channels = data.get("channels") or []
+        channels = [c for c in raw_channels if c in all_channels] or all_channels
+
         record = NotificationRecord(
             id=str(uuid.uuid4()),
             message=data.get("message", ""),
@@ -77,16 +84,20 @@ class NotificationManager:
             tmux_session=data.get("tmux_session", ""),
             tmux_window=data.get("tmux_window", 0),
             created_at=datetime.now(UTC).isoformat(),
+            channels=channels,
         )
         self._notifications[record.id] = record
 
         # Broadcast to SSE subscribers
         self._broadcast({"event": "notification", "data": record.to_dict()})
 
-        # Schedule Telegram fallback
-        record._timer_task = asyncio.create_task(
-            self._schedule_telegram(record.id, self._timeout_secs)
-        )
+        # Send Telegram: immediately if web channel is disabled, otherwise
+        # delay as a fallback (gives the browser time to dismiss first).
+        if "telegram" in record.channels:
+            delay = 0 if "web" not in record.channels else self._get_timeout()
+            record._timer_task = asyncio.create_task(
+                self._schedule_telegram(record.id, delay)
+            )
 
         logger.info(
             "Notification created: %s (session=%s, container=%s)",

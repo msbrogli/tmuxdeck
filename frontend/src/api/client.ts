@@ -2,6 +2,7 @@ import type {
   Container,
   ContainerListResponse,
   Template,
+  TelegramChat,
   Settings,
   CreateContainerRequest,
   CreateSessionRequest,
@@ -39,6 +40,10 @@ export interface ApiClient {
   // Settings
   getSettings(): Promise<Settings>;
   updateSettings(settings: Partial<Settings>): Promise<Settings>;
+
+  // Telegram chats
+  getTelegramChats(): Promise<{ chats: TelegramChat[] }>;
+  removeTelegramChat(chatId: number): Promise<{ chats: TelegramChat[] }>;
 }
 
 import { mockApi } from '../mocks/mockApi';

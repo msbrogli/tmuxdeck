@@ -159,6 +159,7 @@ class NotificationRequest(CamelModel):
     container_id: str = ""
     tmux_session: str = ""
     tmux_window: int = 0
+    channels: list[str] = []
 
 
 class NotificationResponse(CamelModel):
@@ -172,6 +173,7 @@ class NotificationResponse(CamelModel):
     tmux_window: int
     created_at: str
     status: str
+    channels: list[str]
 
 
 class DismissRequest(CamelModel):

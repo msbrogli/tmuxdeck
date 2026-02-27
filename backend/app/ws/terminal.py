@@ -48,6 +48,20 @@ async def _set_tmux_extended_keys(tmux_prefix: list[str]) -> None:
         pass  # tmux may not support extended-keys on older versions
 
 
+async def _set_tmux_passthrough(tmux_prefix: list[str]) -> None:
+    """Enable DCS passthrough so tmuxdeck-open can send OSC sequences
+    through tmux to xterm.js in the browser (requires tmux >= 3.3a)."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *tmux_prefix, "set-option", "-g", "allow-passthrough", "on",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.wait()
+    except OSError:
+        pass
+
+
 async def _get_tmux_option(tmux_prefix: list[str], option: str) -> str:
     """Read a global tmux option value. Returns empty string on error."""
     try:
@@ -284,6 +298,8 @@ async def terminal_ws(
             tmux_prefix = ["tmux"]
             # Enable CSI u extended keys (e.g. Shift+Enter) before attaching
             await _set_tmux_extended_keys(tmux_prefix)
+            # Enable DCS passthrough for tmuxdeck-open
+            await _set_tmux_passthrough(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Local",
                                 tmux_prefix=tmux_prefix, session_name=session_name)
@@ -302,6 +318,8 @@ async def terminal_ws(
             tmux_prefix = ["tmux", "-S", socket]
             # Enable CSI u extended keys (e.g. Shift+Enter) before attaching
             await _set_tmux_extended_keys(tmux_prefix)
+            # Enable DCS passthrough for tmuxdeck-open
+            await _set_tmux_passthrough(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Host",
                                 tmux_prefix=tmux_prefix, session_name=session_name)
@@ -321,6 +339,8 @@ async def terminal_ws(
     try:
         # Enable CSI u extended keys (e.g. Shift+Enter) before attaching
         await dm.exec_command(container_id, ["tmux", "set-option", "-s", "extended-keys", "always"])
+        # Enable DCS passthrough for tmuxdeck-open OSC sequences
+        await dm.exec_command(container_id, ["tmux", "set-option", "-g", "allow-passthrough", "on"])
 
         # Start interactive docker exec: tmux attach
         cmd = ["tmux", "attach-session", "-t", target]

@@ -52,6 +52,15 @@ async def _inject_scripts(dm: "DockerManager", container_id: str) -> None:
     await dm.put_file(container_id, "/usr/local/bin", "tmuxdeck-open", open_script)
     await dm.exec_command(container_id, ["chmod", "+x", "/usr/local/bin/tmuxdeck-open"])
 
+    notify_script = _read_script("tmuxdeck-notify")
+    await dm.put_file(container_id, "/usr/local/bin", "tmuxdeck-notify", notify_script)
+    await dm.exec_command(container_id, ["chmod", "+x", "/usr/local/bin/tmuxdeck-notify"])
+
+    for hook in ("tmuxdeck-hook-prompt", "tmuxdeck-hook-stop", "tmuxdeck-hook-notification"):
+        script = _read_script(hook)
+        await dm.put_file(container_id, "/usr/local/bin", hook, script)
+        await dm.exec_command(container_id, ["chmod", "+x", f"/usr/local/bin/{hook}"])
+
     # Now run the install script (tmuxdeck-open is already in place)
     await dm.exec_command(container_id, ["sh", "/usr/local/bin/tmuxdeck-install"])
 
@@ -213,7 +222,7 @@ async def create_container(req: CreateContainerRequest):
     # Merge env
     env = dict(template.get("defaultEnv", {}))
     env.update(req.env)
-    env.setdefault("TMUXDECK_URL", "http://host.docker.internal:7080")
+    env.setdefault("TMUXDECK_URL", "http://host.docker.internal:8000")
 
     container_name = f"{store.config.container_name_prefix}-{req.name}"
 
@@ -347,7 +356,7 @@ async def create_container_stream(req: CreateContainerRequest):
 
         env = dict(template.get("defaultEnv", {}))
         env.update(req.env)
-        env.setdefault("TMUXDECK_URL", "http://host.docker.internal:7080")
+        env.setdefault("TMUXDECK_URL", "http://host.docker.internal:8000")
 
         container_name = f"{store.config.container_name_prefix}-{req.name}"
 

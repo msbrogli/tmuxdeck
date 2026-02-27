@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const tabs = [
   { label: 'General', path: '/settings' },
+  { label: 'Telegram', path: '/settings/telegram' },
   { label: 'Templates', path: '/settings/templates' },
 ];
 

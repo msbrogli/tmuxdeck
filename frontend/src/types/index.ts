@@ -82,6 +82,12 @@ export interface TelegramLink {
   createdAt: string;
 }
 
+export interface TelegramChat {
+  chatId: number;
+  username: string | null;
+  firstName: string | null;
+}
+
 export interface Settings {
   telegramBotToken: string;
   telegramAllowedUsers: string[];
@@ -103,6 +109,7 @@ export interface ClaudeNotification {
   tmuxWindow: number;
   createdAt: string;
   status: string;
+  channels?: string[];
 }
 
 export interface CreateContainerRequest {

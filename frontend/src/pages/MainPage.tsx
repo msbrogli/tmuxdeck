@@ -8,6 +8,7 @@ import { KeyboardHelp } from '../components/KeyboardHelp';
 import { FileViewer } from '../components/FileViewer';
 import { FoldedSessionPreview } from '../components/FoldedSessionPreview';
 import { Monitor, Maximize2, Eye } from 'lucide-react';
+import { useToast } from '../components/ToastContainer';
 import { useTerminalPool } from '../hooks/useTerminalPool';
 import { useWindowShortcuts } from '../hooks/useWindowShortcuts';
 import { useSessionExpandedState } from '../hooks/useSessionExpandedState';
@@ -43,6 +44,7 @@ export function MainPage() {
   const clearTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const prevBellKeysRef = useRef<Set<string>>(new Set());
   const queryClient = useQueryClient();
+  const { addToast } = useToast();
 
   const { map: shortcutMap, assignDigit, digitByTargetKey } = useWindowShortcuts();
   const shortcutMapRef = useRef(shortcutMap);
@@ -224,25 +226,48 @@ export function MainPage() {
         const parsed = JSON.parse(event.data);
         if (parsed.event === 'notification' && parsed.data) {
           const notif: ClaudeNotification = parsed.data;
-          if ('Notification' in window && Notification.permission === 'granted') {
-            const n = new window.Notification(notif.title || 'Claude Code', {
-              body: notif.message || 'Needs attention',
-              tag: `claude-${notif.id}`,
+          const ch = notif.channels;
+          const showWeb = !ch || ch.length === 0 || ch.includes('web');
+          const showOs = !ch || ch.length === 0 || ch.includes('os');
+
+          // Show in-app toast if web channel enabled
+          if (showWeb) {
+            addToast({
+              title: notif.title || 'Claude Code',
+              message: notif.message || 'Needs attention',
+              onClick: notif.containerId && notif.tmuxSession != null
+                ? () => selectSession(notif.containerId, notif.tmuxSession, notif.tmuxWindow ?? 0)
+                : undefined,
             });
-            n.onclick = () => {
-              window.focus();
-              // Navigate to the relevant terminal
-              if (notif.containerId && notif.tmuxSession != null) {
-                selectSession(notif.containerId, notif.tmuxSession, notif.tmuxWindow ?? 0);
-              }
-            };
+          }
+
+          // Fire browser notification if os channel enabled and permission granted
+          if (showOs && 'Notification' in window) {
+            if (Notification.permission === 'granted') {
+              const n = new window.Notification(notif.title || 'Claude Code', {
+                body: notif.message || 'Needs attention',
+                tag: `claude-${notif.id}`,
+              });
+              n.onclick = () => {
+                window.focus();
+                if (notif.containerId && notif.tmuxSession != null) {
+                  selectSession(notif.containerId, notif.tmuxSession, notif.tmuxWindow ?? 0);
+                }
+              };
+            } else if (Notification.permission === 'default') {
+              addToast({
+                title: 'Enable OS notifications?',
+                message: 'Click here to allow browser notifications for TMuxDeck alerts.',
+                onClick: () => { Notification.requestPermission(); },
+              });
+            }
           }
         }
       } catch { /* ignore parse errors */ }
     };
 
     return () => evtSource.close();
-  }, [selectSession]);
+  }, [selectSession, addToast]);
 
   const escTimestampRef = useRef<number>(0);
 

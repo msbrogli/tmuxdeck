@@ -1,0 +1,16 @@
+#!/bin/bash
+# Claude Code hook: UserPromptSubmit
+# Sets pane status to running and dismisses pending notifications.
+
+tmux set-option -p @pane_status running 2>/dev/null
+
+CONTAINER_ID=$(if [ -f /.dockerenv ]; then hostname; else echo host; fi)
+TMUX_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+TMUX_WINDOW=$(tmux display-message -p '#{window_index}' 2>/dev/null || echo 0)
+
+curl -s -X POST "${TMUXDECK_URL:-http://localhost:8000}/api/v1/notifications/dismiss" \
+  -H 'Content-Type: application/json' \
+  -d "{\"containerId\":\"$CONTAINER_ID\",\"tmuxSession\":\"$TMUX_SESSION\",\"tmuxWindow\":$TMUX_WINDOW}" \
+  2>/dev/null &
+
+exit 0

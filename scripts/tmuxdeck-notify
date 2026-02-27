@@ -1,0 +1,78 @@
+#!/bin/bash
+# Send a notification to the TmuxDeck web UI via the REST API.
+# Usage: tmuxdeck-notify [OPTIONS] <message>
+#
+# Install: cp scripts/tmuxdeck-notify /usr/local/bin/ && chmod +x /usr/local/bin/tmuxdeck-notify
+
+set -e
+
+TITLE="Test Notification"
+TYPE="test"
+SESSION_ID=""
+CONTAINER_ID=""
+CHANNELS=""
+URL="${TMUXDECK_URL:-http://localhost:8000}"
+
+usage() {
+    cat <<EOF
+Usage: tmuxdeck-notify [OPTIONS] <message>
+
+Send a notification to the TmuxDeck web UI.
+
+Options:
+  -t, --title TITLE          Notification title (default: "Test Notification")
+  -T, --type TYPE            Notification type (default: "test")
+  -s, --session SESSION      Session ID
+  -c, --container CONTAINER  Container ID
+  -C, --channels CHANNELS    Comma-separated delivery channels: web,os,telegram (default: all)
+  -u, --url URL              Backend URL (default: \$TMUXDECK_URL or http://localhost:8000)
+  -h, --help                 Show this help
+EOF
+    exit 0
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -t|--title)     TITLE="$2"; shift 2 ;;
+        -T|--type)      TYPE="$2"; shift 2 ;;
+        -s|--session)   SESSION_ID="$2"; shift 2 ;;
+        -c|--container) CONTAINER_ID="$2"; shift 2 ;;
+        -C|--channels)  CHANNELS="$2"; shift 2 ;;
+        -u|--url)       URL="$2"; shift 2 ;;
+        -h|--help)      usage ;;
+        --)             shift; break ;;
+        -*)             echo "tmuxdeck-notify: unknown option: $1" >&2; exit 1 ;;
+        *)              break ;;
+    esac
+done
+
+MESSAGE="$*"
+if [ -z "$MESSAGE" ]; then
+    echo "tmuxdeck-notify: message is required" >&2
+    echo "Usage: tmuxdeck-notify [OPTIONS] <message>" >&2
+    exit 1
+fi
+
+# Build channels JSON array from comma-separated string
+CHANNELS_JSON=""
+if [ -n "$CHANNELS" ]; then
+    CHANNELS_JSON=$(echo "$CHANNELS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk '{printf "%s\"%s\"", (NR>1?",":""), $0}')
+    CHANNELS_JSON="[${CHANNELS_JSON}]"
+fi
+
+# Build JSON payload
+PAYLOAD=$(printf '{"message":"%s","title":"%s","notificationType":"%s","sessionId":"%s","containerId":"%s"}' \
+    "$(echo "$MESSAGE" | sed 's/"/\\"/g')" \
+    "$(echo "$TITLE" | sed 's/"/\\"/g')" \
+    "$(echo "$TYPE" | sed 's/"/\\"/g')" \
+    "$SESSION_ID" \
+    "$CONTAINER_ID")
+
+# Inject channels array if specified
+if [ -n "$CHANNELS_JSON" ]; then
+    PAYLOAD=$(echo "$PAYLOAD" | sed "s/}$/,\"channels\":${CHANNELS_JSON}}/")
+fi
+
+exec curl -s -X POST "${URL}/api/v1/notifications" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD"

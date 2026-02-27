@@ -33,6 +33,7 @@ async def create_notification(req: NotificationRequest):
         tmux_window=record.tmux_window,
         created_at=record.created_at,
         status=record.status,
+        channels=record.channels,
     )
 
 
@@ -65,6 +66,7 @@ async def list_notifications():
             tmux_window=r.tmux_window,
             created_at=r.created_at,
             status=r.status,
+            channels=r.channels,
         )
         for r in nm.get_pending()
     ]

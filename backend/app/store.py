@@ -211,25 +211,40 @@ def telegram_chats_path() -> Path:
 
 
 def get_telegram_chats() -> list[int]:
+    """Return flat list of chat IDs (used by bot for sending)."""
+    return [c["chatId"] for c in get_telegram_chat_details()]
+
+
+def get_telegram_chat_details() -> list[dict[str, Any]]:
+    """Return list of chat records with user info."""
     p = telegram_chats_path()
     if not p.exists():
         return []
     data = json.loads(p.read_text())
-    return data.get("chat_ids", [])
+    # Migrate old format (flat list of ints) to new format
+    if "chat_ids" in data and "chats" not in data:
+        return [{"chatId": cid, "username": None, "firstName": None} for cid in data["chat_ids"]]
+    return data.get("chats", [])
 
 
-def add_telegram_chat(chat_id: int) -> list[int]:
-    chats = get_telegram_chats()
-    if chat_id not in chats:
-        chats.append(chat_id)
-        _ensure_dir(telegram_chats_path().parent)
-        telegram_chats_path().write_text(json.dumps({"chat_ids": chats}, indent=2))
-    return chats
+def _save_chats(chats: list[dict[str, Any]]) -> None:
+    _ensure_dir(telegram_chats_path().parent)
+    telegram_chats_path().write_text(json.dumps({"chats": chats}, indent=2))
+
+
+def add_telegram_chat(
+    chat_id: int,
+    username: str | None = None,
+    first_name: str | None = None,
+) -> list[int]:
+    chats = get_telegram_chat_details()
+    if not any(c["chatId"] == chat_id for c in chats):
+        chats.append({"chatId": chat_id, "username": username, "firstName": first_name})
+        _save_chats(chats)
+    return [c["chatId"] for c in chats]
 
 
 def remove_telegram_chat(chat_id: int) -> list[int]:
-    chats = get_telegram_chats()
-    chats = [c for c in chats if c != chat_id]
-    _ensure_dir(telegram_chats_path().parent)
-    telegram_chats_path().write_text(json.dumps({"chat_ids": chats}, indent=2))
-    return chats
+    chats = [c for c in get_telegram_chat_details() if c["chatId"] != chat_id]
+    _save_chats(chats)
+    return [c["chatId"] for c in chats]

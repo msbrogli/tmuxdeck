@@ -67,9 +67,6 @@ async def _start_telegram_bot() -> object | None:
         nm.set_telegram_bot(bot)
         bot.set_notification_manager(nm)
 
-        timeout_secs = settings.get("telegramNotificationTimeoutSecs", 60)
-        nm.set_timeout(timeout_secs)
-
         await bot.start()
         return bot
     except Exception:

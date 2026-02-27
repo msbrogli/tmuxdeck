@@ -43,6 +43,13 @@ else
     echo "tmuxdeck-install: warning: tmuxdeck-open not found at /usr/local/bin/tmuxdeck-open" >&2
 fi
 
+# --- Ensure tmuxdeck-notify is installed and executable ---
+if [ -f /usr/local/bin/tmuxdeck-notify ]; then
+    chmod +x /usr/local/bin/tmuxdeck-notify
+else
+    echo "tmuxdeck-install: warning: tmuxdeck-notify not found at /usr/local/bin/tmuxdeck-notify" >&2
+fi
+
 # --- Git safe directory for /workspace ---
 if command -v git >/dev/null 2>&1; then
     existing="$(git config --global --get-all safe.directory 2>/dev/null || true)"

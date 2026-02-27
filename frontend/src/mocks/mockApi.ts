@@ -226,4 +226,14 @@ export const mockApi: ApiClient = {
     Object.assign(settings, update);
     return JSON.parse(JSON.stringify(settings));
   },
+
+  async getTelegramChats() {
+    await delay();
+    return { chats: [] as { chatId: number; username: string | null; firstName: string | null }[] };
+  },
+
+  async removeTelegramChat(_chatId: number) {
+    await delay();
+    return { chats: [] as { chatId: number; username: string | null; firstName: string | null }[] };
+  },
 };

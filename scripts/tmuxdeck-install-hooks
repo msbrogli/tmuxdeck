@@ -1,0 +1,50 @@
+#!/bin/bash
+# Install TmuxDeck hooks into Claude Code settings.
+# Safe to run multiple times (idempotent).
+#
+# Usage: tmuxdeck-install-hooks
+
+set -e
+
+HOOKS_DIR="$HOME/.claude/hooks"
+SETTINGS_FILE="$HOME/.claude/settings.json"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# --- Copy hook scripts ---
+mkdir -p "$HOOKS_DIR"
+for script in tmuxdeck-hook-prompt tmuxdeck-hook-stop tmuxdeck-hook-notification; do
+    cp "$SCRIPT_DIR/$script" "$HOOKS_DIR/$script"
+    chmod +x "$HOOKS_DIR/$script"
+done
+echo "Hook scripts installed to $HOOKS_DIR"
+
+# --- Merge hooks into settings.json ---
+HOOKS_JSON='{
+  "UserPromptSubmit": [
+    {
+      "matcher": "*",
+      "hooks": [{ "type": "command", "command": "~/.claude/hooks/tmuxdeck-hook-prompt" }]
+    }
+  ],
+  "Stop": [
+    {
+      "hooks": [{ "type": "command", "command": "~/.claude/hooks/tmuxdeck-hook-stop" }]
+    }
+  ],
+  "Notification": [
+    {
+      "matcher": "*",
+      "hooks": [{ "type": "command", "command": "~/.claude/hooks/tmuxdeck-hook-notification" }]
+    }
+  ]
+}'
+
+if [ ! -f "$SETTINGS_FILE" ]; then
+    mkdir -p "$(dirname "$SETTINGS_FILE")"
+    echo "{\"hooks\": $HOOKS_JSON}" | jq . > "$SETTINGS_FILE"
+    echo "Created $SETTINGS_FILE with TmuxDeck hooks"
+else
+    UPDATED=$(jq --argjson hooks "$HOOKS_JSON" '.hooks = $hooks' "$SETTINGS_FILE")
+    echo "$UPDATED" | jq . > "$SETTINGS_FILE"
+    echo "Updated hooks in $SETTINGS_FILE"
+fi

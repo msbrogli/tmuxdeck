@@ -51,3 +51,16 @@ async def generate_secret():
     secret = secrets.token_urlsafe(16)
     store.update_settings({"telegramRegistrationSecret": secret})
     return {"secret": secret}
+
+
+@router.get("/telegram-chats")
+async def list_telegram_chats():
+    """Return list of registered Telegram chats with user info."""
+    return {"chats": store.get_telegram_chat_details()}
+
+
+@router.delete("/telegram-chats/{chat_id}")
+async def remove_telegram_chat(chat_id: int):
+    """Unregister a Telegram chat."""
+    store.remove_telegram_chat(chat_id)
+    return {"chats": store.get_telegram_chat_details()}

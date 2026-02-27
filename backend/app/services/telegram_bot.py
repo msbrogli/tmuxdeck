@@ -130,10 +130,11 @@ class TelegramBot:
             await update.message.reply_text("✅ This chat is already registered for notifications.")
             return
 
-        store.add_telegram_chat(chat_id)
+        user = update.effective_chat
+        store.add_telegram_chat(chat_id, username=user.username, first_name=user.first_name)
         await update.message.reply_text(
             "✅ Registration successful!\n"
-            "You will receive Claude Code notifications here when no browser is active."
+            "You will get tmux notifications here when no browser is active."
         )
         logger.info("Registered Telegram chat: %d", chat_id)
 

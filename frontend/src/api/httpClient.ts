@@ -5,6 +5,7 @@ import type {
   ContainerListResponse,
   ContainerStreamEvent,
   Template,
+  TelegramChat,
   Settings,
   CreateContainerRequest,
   CreateSessionRequest,
@@ -211,7 +212,12 @@ export const httpApi: ApiClient = {
   // Settings
   getSettings: () => request<Settings>('/settings'),
   updateSettings: (update: Partial<Settings>) =>
-    request<Settings>('/settings', { method: 'PATCH', body: JSON.stringify(update) }),
+    request<Settings>('/settings', { method: 'POST', body: JSON.stringify(update) }),
+
+  // Telegram chats
+  getTelegramChats: () => request<{ chats: TelegramChat[] }>('/settings/telegram-chats'),
+  removeTelegramChat: (chatId: number) =>
+    request<{ chats: TelegramChat[] }>(`/settings/telegram-chats/${chatId}`, { method: 'DELETE' }),
 };
 
 export async function createContainerStream(

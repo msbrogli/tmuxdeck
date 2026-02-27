@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Plus, X, LogOut, KeyRound, RefreshCw, Copy, Check } from 'lucide-react';
+import { Save, Plus, X, LogOut, KeyRound } from 'lucide-react';
 import { api } from '../api/client';
 import { changePin, logout } from '../api/httpClient';
 import { SettingsTabs } from '../components/SettingsTabs';
@@ -14,40 +14,27 @@ export function SettingsPage() {
     queryFn: () => api.getSettings(),
   });
 
-  const [telegramToken, setTelegramToken] = useState('');
-  const [allowedUsers, setAllowedUsers] = useState<string[]>([]);
   const [defaultVolumes, setDefaultVolumes] = useState<string[]>([]);
   const [sshKeyPath, setSshKeyPath] = useState('');
   const [terminalPoolSize, setTerminalPoolSize] = useState(8);
-  const [telegramRegistrationSecret, setTelegramRegistrationSecret] = useState('');
-  const [telegramTimeoutSecs, setTelegramTimeoutSecs] = useState(60);
   const [isDirty, setIsDirty] = useState(false);
-  const [secretCopied, setSecretCopied] = useState(false);
 
   // Sync local state when settings data changes
-  const [prevSettings, setPrevSettings] = useState(settings);
+  const [prevSettings, setPrevSettings] = useState<typeof settings>(undefined);
   if (settings && settings !== prevSettings) {
     setPrevSettings(settings);
-    setTelegramToken(settings.telegramBotToken);
-    setAllowedUsers(settings.telegramAllowedUsers);
     setDefaultVolumes(settings.defaultVolumeMounts);
     setSshKeyPath(settings.sshKeyPath);
     setTerminalPoolSize(settings.terminalPoolSize ?? 8);
-    setTelegramRegistrationSecret(settings.telegramRegistrationSecret ?? '');
-    setTelegramTimeoutSecs(settings.telegramNotificationTimeoutSecs ?? 60);
     setIsDirty(false);
   }
 
   const saveMutation = useMutation({
     mutationFn: () =>
       api.updateSettings({
-        telegramBotToken: telegramToken,
-        telegramAllowedUsers: allowedUsers,
         defaultVolumeMounts: defaultVolumes,
         sshKeyPath,
         terminalPoolSize,
-        telegramRegistrationSecret: telegramRegistrationSecret,
-        telegramNotificationTimeoutSecs: telegramTimeoutSecs,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
@@ -85,127 +72,6 @@ export function SettingsPage() {
       </div>
 
       <div className="space-y-8">
-        {/* Telegram Section */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-            Telegram Bot
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Bot Token</label>
-              <input
-                type="password"
-                value={telegramToken}
-                onChange={(e) => {
-                  setTelegramToken(e.target.value);
-                  markDirty();
-                }}
-                placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500 font-mono"
-              />
-              <p className="text-xs text-gray-600 mt-1">
-                Get a token from @BotFather on Telegram
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Allowed Users</label>
-              {allowedUsers.map((user, i) => (
-                <div key={i} className="flex items-center gap-2 mb-1">
-                  <input
-                    value={user}
-                    onChange={(e) => {
-                      const newUsers = [...allowedUsers];
-                      newUsers[i] = e.target.value;
-                      setAllowedUsers(newUsers);
-                      markDirty();
-                    }}
-                    placeholder="username or user ID"
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 outline-none focus:border-blue-500"
-                  />
-                  <button
-                    onClick={() => {
-                      setAllowedUsers(allowedUsers.filter((_, j) => j !== i));
-                      markDirty();
-                    }}
-                    className="p-1 text-gray-500 hover:text-red-400"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  setAllowedUsers([...allowedUsers, '']);
-                  markDirty();
-                }}
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"
-              >
-                <Plus size={12} />
-                Add user
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Registration Secret</label>
-              <div className="flex items-center gap-2">
-                <input
-                  readOnly
-                  value={telegramRegistrationSecret}
-                  placeholder="Click Generate to create a secret"
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none font-mono"
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(telegramRegistrationSecret);
-                    setSecretCopied(true);
-                    setTimeout(() => setSecretCopied(false), 2000);
-                  }}
-                  disabled={!telegramRegistrationSecret}
-                  className="p-2 text-gray-500 hover:text-gray-200 disabled:opacity-30 transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {secretCopied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const res = await fetch('/api/v1/settings/generate-secret', { method: 'POST' });
-                      const data = await res.json();
-                      setTelegramRegistrationSecret(data.secret);
-                    } catch { /* ignore */ }
-                  }}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                >
-                  <RefreshCw size={12} />
-                  Generate
-                </button>
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                Send <code className="text-gray-500">/start &lt;secret&gt;</code> to your bot on Telegram to register for notifications
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Notification Timeout (seconds)</label>
-              <input
-                type="number"
-                min={10}
-                max={600}
-                value={telegramTimeoutSecs}
-                onChange={(e) => {
-                  setTelegramTimeoutSecs(Math.max(10, Math.min(600, Number(e.target.value) || 60)));
-                  markDirty();
-                }}
-                className="w-24 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500"
-              />
-              <p className="text-xs text-gray-600 mt-1">
-                Time to wait before sending notification to Telegram (if no browser responds)
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* Volume Mounts Section */}
         <section>
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">

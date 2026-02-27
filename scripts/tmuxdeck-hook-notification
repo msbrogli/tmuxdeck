@@ -1,0 +1,25 @@
+#!/bin/bash
+# Claude Code hook: Notification
+# Sets pane status to attention and sends notification to TmuxDeck.
+# Receives JSON on stdin with message, title, etc.
+
+tmux set-option -p @pane_status attention 2>/dev/null
+
+INPUT=$(cat)
+CONTAINER_ID=$(if [ -f /.dockerenv ]; then hostname; else echo host; fi)
+TMUX_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+TMUX_WINDOW=$(tmux display-message -p '#{window_index}' 2>/dev/null || echo 0)
+
+PAYLOAD=$(echo "$INPUT" | jq -c \
+  --arg cs "$CONTAINER_ID" --arg ts "$TMUX_SESSION" --arg tw "$TMUX_WINDOW" \
+  '. + {containerId: $cs, tmuxSession: $ts, tmuxWindow: ($tw | tonumber)}' 2>/dev/null)
+
+# Fallback if jq is not available or input is not valid JSON
+if [ -z "$PAYLOAD" ]; then
+  PAYLOAD="{\"message\":\"Claude needs attention\",\"title\":\"Claude Code\",\"containerId\":\"$CONTAINER_ID\",\"tmuxSession\":\"$TMUX_SESSION\",\"tmuxWindow\":$TMUX_WINDOW}"
+fi
+
+curl -s -X POST "${TMUXDECK_URL:-http://localhost:8000}/api/v1/notifications" \
+  -H "Content-Type: application/json" -d "$PAYLOAD" 2>/dev/null &
+
+exit 0

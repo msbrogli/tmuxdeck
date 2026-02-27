@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { PinScreen } from './components/PinScreen';
+import { ToastProvider } from './components/ToastContainer';
 import { MainPage } from './pages/MainPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { TelegramSettingsPage } from './pages/TelegramSettingsPage';
 import { HelpPage } from './pages/HelpPage';
 import { useAuth } from './hooks/useAuth';
 import { setOnAuthLost } from './api/httpClient';
@@ -51,16 +53,19 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthGate>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<MainPage />} />
-              <Route path="/settings/templates" element={<TemplatesPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/settings/help" element={<HelpPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<MainPage />} />
+                <Route path="/settings/templates" element={<TemplatesPage />} />
+                <Route path="/settings/telegram" element={<TelegramSettingsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings/help" element={<HelpPage />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </ToastProvider>
       </AuthGate>
     </QueryClientProvider>
   );

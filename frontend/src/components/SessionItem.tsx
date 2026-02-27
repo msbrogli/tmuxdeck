@@ -72,18 +72,18 @@ const HOOKS_SNIPPET = `"hooks": {
   "UserPromptSubmit": [
     {
       "matcher": "*",
-      "hooks": [{ "type": "command", "command": "tmux set-option -p @pane_status running 2>/dev/null; exit 0" }]
+      "hooks": [{ "type": "command", "command": "~/.claude/hooks/tmuxdeck-hook-prompt" }]
     }
   ],
   "Stop": [
     {
-      "hooks": [{ "type": "command", "command": "tmux set-option -p @pane_status idle 2>/dev/null; exit 0" }]
+      "hooks": [{ "type": "command", "command": "~/.claude/hooks/tmuxdeck-hook-stop" }]
     }
   ],
   "Notification": [
     {
       "matcher": "*",
-      "hooks": [{ "type": "command", "command": "tmux set-option -p @pane_status attention 2>/dev/null; exit 0" }]
+      "hooks": [{ "type": "command", "command": "~/.claude/hooks/tmuxdeck-hook-notification" }]
     }
   ]
 }`;

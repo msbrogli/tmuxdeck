@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 import os
 import subprocess
 import xml.dom.minidom
@@ -34,6 +35,12 @@ TEXT_MIME_TYPES = {
 }
 
 
+def _mime_from_extension(path: str) -> str:
+    """Guess MIME type from file extension. Fallback for when `file` is unavailable."""
+    mime, _ = mimetypes.guess_type(path)
+    return mime or "application/octet-stream"
+
+
 def _detect_mime_local(path: str) -> str:
     """Detect MIME type using the `file` command on the host."""
     try:
@@ -42,24 +49,25 @@ def _detect_mime_local(path: str) -> str:
             capture_output=True, text=True, timeout=5,
         )
         mime = result.stdout.strip()
-        if mime and "/" in mime:
+        if mime and "/" in mime and mime != "application/octet-stream":
             return mime
     except Exception:
         pass
-    return "application/octet-stream"
+    return _mime_from_extension(path)
 
 
 async def _detect_mime_container(container_id: str, path: str) -> str:
-    """Detect MIME type using the `file` command inside a Docker container."""
+    """Detect MIME type using the `file` command inside a Docker container,
+    falling back to extension-based detection."""
     dm = DockerManager.get()
     try:
         output = await dm.exec_command(container_id, ["file", "--mime-type", "-b", path])
         mime = output.strip()
-        if mime and "/" in mime:
+        if mime and "/" in mime and mime != "application/octet-stream":
             return mime
     except Exception:
         pass
-    return "application/octet-stream"
+    return _mime_from_extension(path)
 
 
 def _categorize_mime(mime: str) -> str | None:
