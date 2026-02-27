@@ -129,7 +129,8 @@ final class TerminalConnection {
                         self.onData?(bytes)
                     }
                 case .string(let text):
-                    if text.hasPrefix("MOUSE_WARNING:") || text.hasPrefix("BELL_WARNING:") {
+                    if text.hasPrefix("MOUSE_WARNING:") || text.hasPrefix("BELL_WARNING:")
+                        || text.hasPrefix("WINDOW_STATE:") {
                         Task { @MainActor in
                             self.onTextMessage?(text)
                         }

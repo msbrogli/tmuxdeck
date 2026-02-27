@@ -125,6 +125,25 @@ final class TerminalViewModel {
             connection.disableMouse()
         } else if message.hasPrefix("BELL_WARNING:") && !message.hasSuffix(":ok") {
             connection.fixBell()
+        } else if message.hasPrefix("WINDOW_STATE:") {
+            handleWindowStateUpdate(message)
+        }
+    }
+
+    private func handleWindowStateUpdate(_ message: String) {
+        let jsonString = String(message.dropFirst("WINDOW_STATE:".count))
+        guard let data = jsonString.data(using: .utf8) else { return }
+
+        struct WindowState: Decodable {
+            let active: Int?
+            let windows: [TmuxWindowResponse]
+        }
+
+        guard let state = try? JSONDecoder().decode(WindowState.self, from: data) else { return }
+
+        windows = state.windows
+        if let active = state.active, active != activeWindowIndex {
+            activeWindowIndex = active
         }
     }
 }

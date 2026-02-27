@@ -17,7 +17,7 @@ from .. import auth
 from ..config import config
 from ..services.bridge_manager import BridgeManager, bridge_id_from_container, bridge_source_from_container, is_bridge
 from ..services.docker_manager import DockerManager
-from ..services.tmux_manager import _is_host, _is_local
+from ..services.tmux_manager import TmuxManager, _is_host, _is_local
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -121,6 +121,7 @@ async def _pty_terminal(
     label: str = "PTY",
     tmux_prefix: list[str] | None = None,
     session_name: str | None = None,
+    container_id: str | None = None,
 ) -> None:
     """Handle a tmux session via a local PTY with the given command.
 
@@ -296,11 +297,55 @@ async def _pty_terminal(
         except (OSError, WebSocketDisconnect):
             pass
 
+    async def poll_window_state() -> None:
+        """Periodically check tmux window state and notify the frontend."""
+        if not tmux_prefix or not session_name or not container_id:
+            return
+        tm = TmuxManager.get()
+        last_active: int | None = None
+        last_windows: list[dict] | None = None
+        try:
+            while True:
+                await asyncio.sleep(2)
+                try:
+                    windows = await tm.list_windows(container_id, session_name)
+                    active = next(
+                        (w["index"] for w in windows if w.get("active")), None,
+                    )
+                    # Serialize to comparable form (ignore pane_status fluctuations)
+                    win_summary = [
+                        (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                        for w in windows
+                    ]
+                    last_summary = (
+                        [
+                            (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                            for w in last_windows
+                        ]
+                        if last_windows
+                        else None
+                    )
+
+                    if active != last_active or win_summary != last_summary:
+                        last_active = active
+                        last_windows = windows
+                        payload = json.dumps(
+                            {"active": active, "windows": windows}
+                        )
+                        await websocket.send_text(f"WINDOW_STATE:{payload}")
+                except (OSError, asyncio.CancelledError):
+                    raise
+                except Exception as e:
+                    logger.debug("%s window poll failed: %s", label, e)
+        except (asyncio.CancelledError, WebSocketDisconnect):
+            pass
+
     try:
         done, pending = await asyncio.wait(
             [
                 asyncio.create_task(pty_to_ws()),
                 asyncio.create_task(ws_to_pty()),
+                asyncio.create_task(poll_window_state()),
             ],
             return_when=asyncio.FIRST_COMPLETED,
         )
@@ -532,7 +577,8 @@ async def terminal_ws(
             await _set_tmux_monitor_activity(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Local",
-                                tmux_prefix=tmux_prefix, session_name=session_name)
+                                tmux_prefix=tmux_prefix, session_name=session_name,
+                                container_id=container_id)
         except WebSocketDisconnect:
             pass
         except Exception as e:
@@ -554,7 +600,8 @@ async def terminal_ws(
             await _set_tmux_monitor_activity(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Host",
-                                tmux_prefix=tmux_prefix, session_name=session_name)
+                                tmux_prefix=tmux_prefix, session_name=session_name,
+                                container_id=container_id)
         except WebSocketDisconnect:
             pass
         except Exception as e:
@@ -745,11 +792,51 @@ async def terminal_ws(
             except (OSError, WebSocketDisconnect):
                 pass
 
-        # Run both directions concurrently
+        async def poll_docker_window_state() -> None:
+            """Periodically check tmux window state in docker container."""
+            tm = TmuxManager.get()
+            last_active: int | None = None
+            last_windows: list[dict] | None = None
+            try:
+                while True:
+                    await asyncio.sleep(2)
+                    try:
+                        windows = await tm.list_windows(container_id, session_name)
+                        active = next(
+                            (w["index"] for w in windows if w.get("active")), None,
+                        )
+                        win_summary = [
+                            (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                            for w in windows
+                        ]
+                        last_summary = (
+                            [
+                                (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                                for w in last_windows
+                            ]
+                            if last_windows
+                            else None
+                        )
+                        if active != last_active or win_summary != last_summary:
+                            last_active = active
+                            last_windows = windows
+                            payload = json.dumps(
+                                {"active": active, "windows": windows}
+                            )
+                            await websocket.send_text(f"WINDOW_STATE:{payload}")
+                    except (OSError, asyncio.CancelledError):
+                        raise
+                    except Exception as e:
+                        logger.debug("Docker window poll failed: %s", e)
+            except (asyncio.CancelledError, WebSocketDisconnect):
+                pass
+
+        # Run all directions concurrently
         done, pending = await asyncio.wait(
             [
                 asyncio.create_task(docker_to_ws()),
                 asyncio.create_task(ws_to_docker()),
+                asyncio.create_task(poll_docker_window_state()),
             ],
             return_when=asyncio.FIRST_COMPLETED,
         )
