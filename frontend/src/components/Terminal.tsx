@@ -212,15 +212,15 @@ function setupWebSocketTerminal(
   // Intercept Shift+Enter and copy/paste shortcuts
   const isMac = navigator.platform.toUpperCase().includes('MAC');
   term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-    if (e.type !== 'keydown') return true;
-
-    // Shift+Enter → CSI u escape sequence
+    // Block Shift+Enter on ALL event types to prevent xterm.js from generating CR
     if (e.key === 'Enter' && e.shiftKey) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send('\x1b[13;2u');
+      if (e.type === 'keydown' && ws.readyState === WebSocket.OPEN) {
+        ws.send('SHIFT_ENTER:');
       }
       return false;
     }
+
+    if (e.type !== 'keydown') return true;
 
     // Copy: Ctrl+Shift+C (Linux/Windows) or Cmd+C (Mac)
     if (e.key === 'c' || e.key === 'C') {

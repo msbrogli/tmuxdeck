@@ -222,6 +222,19 @@ async def _pty_terminal(
                         except (ValueError, OSError) as e:
                             logger.debug("%s scroll failed: %s", label, e)
                         continue
+                    if text == "SHIFT_ENTER:" and tmux_prefix and session_name:
+                        try:
+                            sk = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "send-keys", "-l",
+                                "-t", session_name, "--",
+                                "\x1b[13;2u",
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                            )
+                            await sk.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s shift-enter failed: %s", label, e)
+                        continue
                     if text == "DISABLE_MOUSE:" and tmux_prefix:
                         try:
                             dm_proc = await asyncio.create_subprocess_exec(
@@ -339,6 +352,7 @@ async def terminal_ws(
     try:
         # Enable CSI u extended keys (e.g. Shift+Enter) before attaching
         await dm.exec_command(container_id, ["tmux", "set-option", "-s", "extended-keys", "always"])
+
         # Enable DCS passthrough for tmuxdeck-open OSC sequences
         await dm.exec_command(container_id, ["tmux", "set-option", "-g", "allow-passthrough", "on"])
 
@@ -459,6 +473,18 @@ async def terminal_ws(
                                     )
                             except (ValueError, Exception) as e:
                                 logger.debug("scroll failed: %s", e)
+                            continue
+                        # Handle Shift+Enter: inject CSI u directly into pane
+                        if text == "SHIFT_ENTER:":
+                            try:
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "send-keys", "-l",
+                                     "-t", session_name, "--",
+                                     "\x1b[13;2u"],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("shift-enter failed: %s", e)
                             continue
                         # Handle disable-mouse control message
                         if text == "DISABLE_MOUSE:":
