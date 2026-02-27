@@ -175,6 +175,18 @@ def settings_path() -> Path:
     return config.data_path / "settings.json"
 
 
+_DEFAULT_HOTKEYS: dict[str, str] = {
+    "quickSwitch": "Ctrl+K",
+    "showHelp": "Ctrl+H",
+    "nextItem": "Ctrl+ArrowDown",
+    "prevItem": "Ctrl+ArrowUp",
+    "foldSession": "Ctrl+ArrowLeft",
+    "unfoldSession": "Ctrl+ArrowRight",
+    "moveWindowUp": "Shift+Ctrl+ArrowUp",
+    "moveWindowDown": "Shift+Ctrl+ArrowDown",
+    "deselect": "Escape Escape",
+}
+
 _DEFAULT_SETTINGS: dict[str, Any] = {
     "telegramBotToken": "",
     "telegramAllowedUsers": [],
@@ -182,6 +194,7 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "sshKeyPath": "~/.ssh/id_rsa",
     "telegramRegistrationSecret": "",
     "telegramNotificationTimeoutSecs": 60,
+    "hotkeys": dict(_DEFAULT_HOTKEYS),
 }
 
 

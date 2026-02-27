@@ -18,6 +18,7 @@ import type { SessionTarget, Selection, FoldedSessionTarget, Container, Containe
 import { isWindowSelection, isFoldedSelection } from '../types';
 import { sortSessionsByOrder } from '../utils/sessionOrder';
 import { getContainerExpanded } from '../utils/sidebarState';
+import { DEFAULT_HOTKEYS, matchesBinding, matchesDoublePressKey } from '../utils/hotkeys';
 
 function getInitialSession(): SessionTarget | null {
   try {
@@ -271,13 +272,16 @@ export function MainPage() {
 
   const escTimestampRef = useRef<number>(0);
 
+  // Merge user hotkeys with defaults
+  const hotkeys = { ...DEFAULT_HOTKEYS, ...(settings as Settings | undefined)?.hotkeys };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if (matchesBinding(e, hotkeys.quickSwitch)) {
         e.preventDefault();
         setSwitcherOpen((v) => !v);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+      if (matchesBinding(e, hotkeys.showHelp)) {
         e.preventDefault();
         setHelpOpen((v) => !v);
       }
@@ -309,8 +313,8 @@ export function MainPage() {
           }
         }
       }
-      // Shift+Ctrl+Up/Down: swap (move) current window within session — skip if folded
-      if (e.shiftKey && (e.ctrlKey || e.metaKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      // Move window up/down: swap current window within session — skip if folded
+      if (matchesBinding(e, hotkeys.moveWindowUp) || matchesBinding(e, hotkeys.moveWindowDown)) {
         if (selectedSession && isFoldedSelection(selectedSession)) return;
         const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
         if (containers && selectedSession && isWindowSelection(selectedSession)) {
@@ -321,7 +325,7 @@ export function MainPage() {
             const sortedWindows = [...session.windows].sort((a, b) => a.index - b.index);
             const curPos = sortedWindows.findIndex((w) => w.index === selectedSession.windowIndex);
             if (curPos !== -1) {
-              const targetPos = e.key === 'ArrowUp' ? curPos - 1 : curPos + 1;
+              const targetPos = matchesBinding(e, hotkeys.moveWindowUp) ? curPos - 1 : curPos + 1;
               if (targetPos >= 0 && targetPos < sortedWindows.length) {
                 const currentWindowIndex = sortedWindows[curPos].index;
                 const targetWindowIndex = sortedWindows[targetPos].index;
@@ -361,13 +365,12 @@ export function MainPage() {
         }
         return;
       }
-      // Ctrl+Left: fold current session
-      if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft' && !e.shiftKey) {
+      // Fold current session
+      if (matchesBinding(e, hotkeys.foldSession)) {
         if (selectedSession) {
           e.preventDefault();
           const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
           if (containers) {
-            // Find the session for the current selection
             const cId = selectedSession.containerId;
             const container = containers.find((c) => c.id === cId);
             if (container) {
@@ -378,7 +381,6 @@ export function MainPage() {
                 session = container.sessions.find((s) => s.name === selectedSession.sessionName);
               }
               if (session && !isFoldedSelection(selectedSession)) {
-                // Already expanded → fold it
                 setSessionExpanded(cId, session.id, false);
                 selectFoldedSession({
                   containerId: cId,
@@ -392,8 +394,8 @@ export function MainPage() {
         }
         return;
       }
-      // Ctrl+Right: unfold current session
-      if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight' && !e.shiftKey) {
+      // Unfold current session
+      if (matchesBinding(e, hotkeys.unfoldSession)) {
         if (selectedSession && isFoldedSelection(selectedSession)) {
           e.preventDefault();
           const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
@@ -411,8 +413,8 @@ export function MainPage() {
         }
         return;
       }
-      // Ctrl+Up/Down: navigate through windows AND folded sessions
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      // Navigate through windows AND folded sessions
+      if (matchesBinding(e, hotkeys.nextItem) || matchesBinding(e, hotkeys.prevItem)) {
         const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
         if (containers && selectedSession) {
           e.preventDefault();
@@ -423,10 +425,8 @@ export function MainPage() {
             const ordered = sortSessionsByOrder(c.sessions, c.id);
             for (const s of ordered) {
               if (!isSessionExpanded(c.id, s.id)) {
-                // Folded → push one FoldedSessionTarget
                 allItems.push({ containerId: c.id, sessionName: s.name, sessionId: s.id, folded: true });
               } else {
-                // Expanded → push individual windows
                 const sortedWindows = [...s.windows].sort((a, b) => a.index - b.index);
                 for (const w of sortedWindows) {
                   allItems.push({ containerId: c.id, sessionName: s.name, windowIndex: w.index });
@@ -446,7 +446,7 @@ export function MainPage() {
               }
               return false;
             });
-            const delta = e.key === 'ArrowDown' ? 1 : -1;
+            const delta = matchesBinding(e, hotkeys.nextItem) ? 1 : -1;
             const nextIdx = curIdx === -1 ? 0 : (curIdx + delta + allItems.length) % allItems.length;
             const next = allItems[nextIdx];
             if (isFoldedSelection(next)) {
@@ -457,11 +457,11 @@ export function MainPage() {
           }
         }
       }
-      if (e.key === 'Escape' && !switcherOpen && !helpOpen) {
+      // Deselect (double-press)
+      if (matchesDoublePressKey(e, hotkeys.deselect) && !switcherOpen && !helpOpen) {
         const now = Date.now();
         if (now - escTimestampRef.current < 500) {
           if (selectedSession === null && previewSession === null) {
-            // Already deselected — logout to PIN screen
             logout().then(() => {
               queryClient.invalidateQueries({ queryKey: ['auth'] });
             });
@@ -477,7 +477,7 @@ export function MainPage() {
     };
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-  }, [switcherOpen, helpOpen, clearPreviewImmediate, selectedSession, previewSession, assignDigit, selectSession, selectFoldedSession, setSessionExpanded, isSessionExpanded, queryClient, digitByTargetKey]);
+  }, [switcherOpen, helpOpen, clearPreviewImmediate, selectedSession, previewSession, assignDigit, selectSession, selectFoldedSession, setSessionExpanded, isSessionExpanded, queryClient, digitByTargetKey, hotkeys]);
 
   return (
     <div className="flex h-full w-full">
@@ -585,7 +585,7 @@ export function MainPage() {
         />
       )}
 
-      {helpOpen && <KeyboardHelp onClose={() => setHelpOpen(false)} />}
+      {helpOpen && <KeyboardHelp onClose={() => setHelpOpen(false)} hotkeys={hotkeys} />}
 
       {viewingFile && (
         <FileViewer

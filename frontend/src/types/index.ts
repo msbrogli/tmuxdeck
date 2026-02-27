@@ -96,6 +96,7 @@ export interface Settings {
   terminalPoolSize?: number;
   telegramRegistrationSecret?: string;
   telegramNotificationTimeoutSecs?: number;
+  hotkeys?: Record<string, string>;
 }
 
 export interface ClaudeNotification {

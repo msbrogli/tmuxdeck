@@ -1,27 +1,22 @@
 import { useEffect, useRef } from 'react';
 import { Keyboard } from 'lucide-react';
+import { HOTKEY_LABELS, bindingToDisplayKeys } from '../utils/hotkeys';
 
 interface KeyboardHelpProps {
   onClose: () => void;
+  hotkeys: Record<string, string>;
 }
 
-const shortcuts = [
-  { keys: ['Ctrl', 'K'], action: 'Quick-switch sessions' },
-  { keys: ['Ctrl', 'H'], action: 'Show keyboard shortcuts' },
+const STATIC_SHORTCUTS = [
   { keys: ['Ctrl', '1\u20130'], action: 'Switch to numbered window' },
   { keys: ['Alt', '1\u20139'], action: 'Switch to window N in session' },
   { keys: ['Ctrl', 'Alt', '1\u20130'], action: 'Assign/unassign number' },
-  { keys: ['Ctrl', '\u2191\u2193'], action: 'Next / previous window or session' },
-  { keys: ['Ctrl', '\u2190'], action: 'Fold session' },
-  { keys: ['Ctrl', '\u2192'], action: 'Unfold session' },
-  { keys: ['Shift', 'Ctrl', '\u2191\u2193'], action: 'Move window up / down in session' },
-  { keys: ['Esc', 'Esc'], action: 'Deselect current session' },
   { keys: ['\u2191', '\u2193'], action: 'Navigate in switcher' },
   { keys: ['Enter'], action: 'Select in switcher' },
   { keys: ['Esc'], action: 'Close dialog / switcher' },
 ];
 
-export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
+export function KeyboardHelp({ onClose, hotkeys }: KeyboardHelpProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,6 +30,13 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
   }, [onClose]);
+
+  const configurableShortcuts = (Object.entries(HOTKEY_LABELS) as [string, string][]).map(([id, action]) => ({
+    keys: bindingToDisplayKeys(hotkeys[id] ?? ''),
+    action,
+  }));
+
+  const allShortcuts = [...configurableShortcuts, ...STATIC_SHORTCUTS];
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-start justify-center pt-[15vh] z-50" onClick={onClose}>
@@ -53,11 +55,11 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
         </div>
 
         <div className="px-4 py-3 space-y-2">
-          {shortcuts.map((s, i) => (
+          {allShortcuts.map((s, i) => (
             <div key={i} className="flex items-center justify-between py-1">
               <span className="text-sm text-gray-400 whitespace-nowrap">{s.action}</span>
               <div className="flex items-center gap-1">
-                {s.keys.map((key, j) => (
+                {s.keys.map((key: string, j: number) => (
                   <span key={j}>
                     {j > 0 && <span className="text-gray-600 text-xs mx-0.5">+</span>}
                     <kbd className="text-xs text-gray-300 bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 min-w-[1.5rem] text-center inline-block">

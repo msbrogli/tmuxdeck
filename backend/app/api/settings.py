@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from .. import store
 from ..schemas import SettingsResponse, UpdateSettingsRequest
+from ..store import _DEFAULT_HOTKEYS
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
@@ -18,6 +19,7 @@ def _to_response(data: dict) -> SettingsResponse:
         ssh_key_path=data.get("sshKeyPath", "~/.ssh/id_rsa"),
         telegram_registration_secret=data.get("telegramRegistrationSecret", ""),
         telegram_notification_timeout_secs=data.get("telegramNotificationTimeoutSecs", 60),
+        hotkeys={**_DEFAULT_HOTKEYS, **data.get("hotkeys", {})},
     )
 
 
@@ -41,6 +43,8 @@ async def update_settings(req: UpdateSettingsRequest):
         updates["telegramRegistrationSecret"] = req.telegram_registration_secret
     if req.telegram_notification_timeout_secs is not None:
         updates["telegramNotificationTimeoutSecs"] = req.telegram_notification_timeout_secs
+    if req.hotkeys is not None:
+        updates["hotkeys"] = req.hotkeys
 
     return _to_response(store.update_settings(updates))
 

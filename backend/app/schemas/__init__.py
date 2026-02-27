@@ -137,6 +137,7 @@ class SettingsResponse(CamelModel):
     ssh_key_path: str
     telegram_registration_secret: str
     telegram_notification_timeout_secs: int
+    hotkeys: dict[str, str]
 
 
 class UpdateSettingsRequest(CamelModel):
@@ -146,6 +147,7 @@ class UpdateSettingsRequest(CamelModel):
     ssh_key_path: str | None = None
     telegram_registration_secret: str | None = None
     telegram_notification_timeout_secs: int | None = None
+    hotkeys: dict[str, str] | None = None
 
 
 # --- Notifications ---
