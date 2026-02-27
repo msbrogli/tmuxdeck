@@ -139,11 +139,12 @@ final class TerminalViewModel {
             let windows: [TmuxWindowResponse]
         }
 
-        guard let state = try? JSONDecoder().decode(WindowState.self, from: data) else { return }
-
-        windows = state.windows
-        if let active = state.active, active != activeWindowIndex {
-            activeWindowIndex = active
-        }
+        do {
+            let state = try JSONDecoder().decode(WindowState.self, from: data)
+            windows = state.windows
+            if let active = state.active {
+                activeWindowIndex = active
+            }
+        } catch {}
     }
 }

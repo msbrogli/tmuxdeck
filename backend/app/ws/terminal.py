@@ -300,13 +300,15 @@ async def _pty_terminal(
     async def poll_window_state() -> None:
         """Periodically check tmux window state and notify the frontend."""
         if not tmux_prefix or not session_name or not container_id:
+            logger.debug("%s poll_window_state: skipped (missing params)", label)
             return
+        logger.debug("%s poll_window_state: started for %s/%s", label, container_id, session_name)
         tm = TmuxManager.get()
         last_active: int | None = None
         last_windows: list[dict] | None = None
         try:
             while True:
-                await asyncio.sleep(2)
+                await asyncio.sleep(1)
                 try:
                     windows = await tm.list_windows(container_id, session_name)
                     active = next(
@@ -332,12 +334,15 @@ async def _pty_terminal(
                         payload = json.dumps(
                             {"active": active, "windows": windows}
                         )
+                        logger.debug("%s poll: sending WINDOW_STATE (active=%s, %d windows)",
+                                    label, active, len(windows))
                         await websocket.send_text(f"WINDOW_STATE:{payload}")
                 except (OSError, asyncio.CancelledError):
                     raise
                 except Exception as e:
-                    logger.debug("%s window poll failed: %s", label, e)
+                    logger.warning("%s window poll failed: %s", label, e, exc_info=True)
         except (asyncio.CancelledError, WebSocketDisconnect):
+            logger.debug("%s poll_window_state: stopped", label)
             pass
 
     try:
@@ -799,7 +804,7 @@ async def terminal_ws(
             last_windows: list[dict] | None = None
             try:
                 while True:
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1)
                     try:
                         windows = await tm.list_windows(container_id, session_name)
                         active = next(
