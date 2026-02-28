@@ -178,15 +178,15 @@ struct AdaptiveContainerView: View {
                                 container: container,
                                 selectedDestination: $selectedDestination
                             )
-                        }
-                        .navigationDestination(item: $selectedDestination) { dest in
-                            TerminalScreen(
-                                apiClient: appState.apiClient,
-                                preferences: appState.preferences,
-                                container: dest.container,
-                                session: dest.session,
-                                isFullscreen: $isFullscreen
-                            )
+                            .navigationDestination(item: $selectedDestination) { dest in
+                                TerminalScreen(
+                                    apiClient: appState.apiClient,
+                                    preferences: appState.preferences,
+                                    container: dest.container,
+                                    session: dest.session,
+                                    isFullscreen: $isFullscreen
+                                )
+                            }
                         }
                 }
             } else {
