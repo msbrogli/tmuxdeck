@@ -42,10 +42,10 @@ struct TerminalScreen: View {
                             theme: vm.theme,
                             fontSize: vm.fontSize,
                             onDismiss: {
-                                vm.dismissScrollback()
+                                withAnimation { vm.dismissScrollback() }
                             }
                         )
-                        .transition(.opacity)
+                        .transition(AnyTransition.opacity)
                         .zIndex(10)
                     }
 

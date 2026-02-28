@@ -47,6 +47,7 @@
 		FA2A11E1FA826AF2345F1C5F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304971475A69816599336A8D /* APIClient.swift */; };
 		B1C2D3E4F5A60718A9B0C1E0 /* TmuxPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */; };
 		B1C2D3E4F5A60718A9B0C1E2 /* PaneIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */; };
+		C2D3E4F5A60718B9B0C1E4F5 /* ScrollbackOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A60718B9B0C1E4F6 /* ScrollbackOverlayView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -91,6 +92,7 @@
 		FBD7F873CFE75C8F5D932B79 /* SwiftTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftTerminalView.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxPane.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneIndicator.swift; sourceTree = "<group>"; };
+		C2D3E4F5A60718B9B0C1E4F6 /* ScrollbackOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollbackOverlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +116,7 @@
 				A827E8747FD22D800D0A4FEA /* QuickActionsSheet.swift */,
 				EFBB292A794852C6A179AEAA /* VoiceInputButton.swift */,
 				B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */,
+				C2D3E4F5A60718B9B0C1E4F6 /* ScrollbackOverlayView.swift */,
 			);
 			path = Terminal;
 			sourceTree = "<group>";
@@ -360,6 +363,7 @@
 				A1B2C3D4E5F60718A9B0C1DA /* CreateContainerView.swift in Sources */,
 				B1C2D3E4F5A60718A9B0C1E0 /* TmuxPane.swift in Sources */,
 				B1C2D3E4F5A60718A9B0C1E2 /* PaneIndicator.swift in Sources */,
+				C2D3E4F5A60718B9B0C1E4F5 /* ScrollbackOverlayView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
