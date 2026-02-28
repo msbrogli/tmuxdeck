@@ -9,6 +9,7 @@ Layout:
 from __future__ import annotations
 
 import json
+import secrets
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003 — used at runtime
@@ -261,3 +262,63 @@ def remove_telegram_chat(chat_id: int) -> list[int]:
     chats = [c for c in get_telegram_chat_details() if c["chatId"] != chat_id]
     _save_chats(chats)
     return [c["chatId"] for c in chats]
+
+
+# --- Bridge Configs ----------------------------------------------------------
+
+
+def bridges_path() -> Path:
+    return config.data_path / "bridges.json"
+
+
+def _load_bridges() -> list[dict[str, Any]]:
+    p = bridges_path()
+    if not p.exists():
+        return []
+    data = json.loads(p.read_text())
+    return data.get("bridges", [])
+
+
+def _save_bridges(bridges: list[dict[str, Any]]) -> None:
+    _ensure_dir(bridges_path().parent)
+    bridges_path().write_text(json.dumps({"bridges": bridges}, indent=2))
+
+
+def list_bridge_configs() -> list[dict[str, Any]]:
+    return _load_bridges()
+
+
+def get_bridge_config(bridge_id: str) -> dict[str, Any] | None:
+    for b in _load_bridges():
+        if b["id"] == bridge_id:
+            return b
+    return None
+
+
+def get_bridge_by_token(token: str) -> dict[str, Any] | None:
+    for b in _load_bridges():
+        if b["token"] == token:
+            return b
+    return None
+
+
+def create_bridge_config(name: str) -> dict[str, Any]:
+    bridges = _load_bridges()
+    record = {
+        "id": str(uuid.uuid4())[:8],
+        "name": name,
+        "token": secrets.token_urlsafe(32),
+        "createdAt": _now(),
+    }
+    bridges.append(record)
+    _save_bridges(bridges)
+    return record
+
+
+def delete_bridge_config(bridge_id: str) -> bool:
+    bridges = _load_bridges()
+    new_bridges = [b for b in bridges if b["id"] != bridge_id]
+    if len(new_bridges) == len(bridges):
+        return False
+    _save_bridges(new_bridges)
+    return True

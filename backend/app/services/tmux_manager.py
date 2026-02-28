@@ -6,6 +6,7 @@ import logging
 from datetime import UTC, datetime
 
 from ..config import config
+from .bridge_manager import BridgeManager, is_bridge
 from .docker_manager import DockerManager
 
 logger = logging.getLogger(__name__)
@@ -22,8 +23,12 @@ def _is_local(container_id: str) -> bool:
     return container_id == LOCAL_CONTAINER_ID
 
 
+def _is_bridge(container_id: str) -> bool:
+    return is_bridge(container_id)
+
+
 def _is_special(container_id: str) -> bool:
-    return _is_host(container_id) or _is_local(container_id)
+    return _is_host(container_id) or _is_local(container_id) or _is_bridge(container_id)
 
 
 def make_session_id(container_id: str, session_name: str) -> str:
@@ -52,7 +57,7 @@ class TmuxManager:
         return cls._instance
 
     async def _run_cmd(self, container_id: str, cmd: list[str]) -> str:
-        """Run a command locally, on the host via socket, or via docker exec."""
+        """Run a command locally, on the host via socket, via bridge, or via docker exec."""
         if _is_local(container_id):
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -72,6 +77,20 @@ class TmuxManager:
             )
             stdout, stderr = await proc.communicate()
             return stdout.decode("utf-8", errors="replace")
+        if _is_bridge(container_id):
+            bm = BridgeManager.get()
+            conn = bm.get_bridge_for_container(container_id)
+            if not conn:
+                return ""
+            try:
+                result = await conn.request({"type": "tmux_cmd", "cmd": cmd})
+                if result.get("error"):
+                    logger.debug("Bridge tmux_cmd error: %s", result["error"])
+                    return ""
+                return result.get("output", "")
+            except asyncio.TimeoutError:
+                logger.warning("Bridge tmux_cmd timed out for %s", container_id)
+                return ""
         return await self._get_docker().exec_command(container_id, cmd)
 
     async def list_windows(self, container_id: str, session_name: str) -> list[dict]:

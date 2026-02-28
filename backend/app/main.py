@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import store
 from .api.auth import router as auth_router
+from .api.bridges import router as bridges_router
 from .api.containers import router as containers_router
 from .api.files import router as files_router
 from .api.images import router as images_router
@@ -19,6 +20,7 @@ from .api.templates import router as templates_router
 from .config import config
 from .middleware import AuthMiddleware
 from .services.notification_manager import NotificationManager
+from .ws.bridge import router as bridge_ws_router
 from .ws.terminal import router as ws_router
 
 logger = logging.getLogger(__name__)
@@ -116,6 +118,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(bridges_router)
 app.include_router(containers_router)
 app.include_router(files_router)
 app.include_router(images_router)
@@ -124,6 +127,7 @@ app.include_router(templates_router)
 app.include_router(settings_router)
 app.include_router(notifications_router)
 app.include_router(ws_router)
+app.include_router(bridge_ws_router)
 
 
 @app.get("/health")

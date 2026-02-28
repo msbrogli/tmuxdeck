@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  ChevronRight,
-  ChevronDown,
   Monitor,
   TerminalSquare,
+  Radio,
   MoreVertical,
   Plus,
   Play,
@@ -12,6 +11,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import type { Container, SessionTarget, Selection } from '../types';
+import { DockerIcon } from './icons/DockerIcon';
 import { api } from '../api/client';
 import { SessionItem } from './SessionItem';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -49,9 +49,11 @@ export function ContainerNode({
   sectionCollapsed,
   onToggleSection,
 }: ContainerNodeProps) {
-  const isHost = container.isHost === true;
-  const isLocal = container.isLocal === true;
-  const isSpecial = isHost || isLocal;
+  const ctype = container.containerType ?? 'docker';
+  const isHost = ctype === 'host';
+  const isLocal = ctype === 'local';
+  const isBridge = ctype === 'bridge';
+  const isSpecial = isHost || isLocal || isBridge;
   const isRunning = container.status === 'running';
   const [expanded, setExpandedRaw] = useState(() => {
     const saved = getContainerExpanded(container.id);
@@ -179,13 +181,17 @@ export function ContainerNode({
           <span className="p-0.5 shrink-0 text-green-400 cursor-pointer" onClick={() => onToggleSection?.()}>
             <TerminalSquare size={14} />
           </span>
+        ) : isBridge ? (
+          <span className="p-0.5 shrink-0 text-purple-400 cursor-pointer" onClick={() => onToggleSection?.()}>
+            <Radio size={14} />
+          </span>
         ) : (
           <button
             onClick={() => isRunning && setExpanded(!expanded)}
-            className="p-0.5 rounded hover:bg-gray-800 text-gray-500 shrink-0"
+            className="p-0.5 rounded hover:bg-gray-800 text-blue-300 shrink-0"
             disabled={!isRunning}
           >
-            {expanded && isRunning ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            <DockerIcon size={14} />
           </button>
         )}
 
@@ -204,10 +210,11 @@ export function ContainerNode({
         ) : (
           <span
             className={`flex-1 text-sm text-gray-300 truncate px-1 select-none ${
-              isSpecial && onToggleSection ? 'cursor-pointer hover:text-gray-100' : 'cursor-default'
+              (isSpecial && onToggleSection) || (!isSpecial && isRunning) ? 'cursor-pointer hover:text-gray-100' : 'cursor-default'
             }`}
             onClick={() => {
               if (isSpecial && onToggleSection) onToggleSection();
+              else if (!isSpecial && isRunning) setExpanded(!expanded);
             }}
             onDoubleClick={() => {
               if (!isSpecial) {
@@ -227,6 +234,10 @@ export function ContainerNode({
         ) : isLocal ? (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 bg-green-900/50 text-green-400">
             local
+          </span>
+        ) : isBridge ? (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 bg-purple-900/50 text-purple-400">
+            bridge
           </span>
         ) : (
           <span

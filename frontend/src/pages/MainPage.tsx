@@ -428,7 +428,7 @@ export function MainPage() {
           e.preventDefault();
           const allItems: Selection[] = [];
           for (const c of containers) {
-            if (c.status !== 'running' && !c.isHost && !c.isLocal) continue;
+            if (c.status !== 'running' && c.containerType !== 'host' && c.containerType !== 'local' && c.containerType !== 'bridge') continue;
             if ((getContainerExpanded(c.id) ?? true) === false) continue;
             const ordered = sortSessionsByOrder(c.sessions, c.id);
             for (const s of ordered) {

@@ -69,8 +69,7 @@ class ContainerResponse(CamelModel):
     display_name: str
     status: str
     image: str
-    is_host: bool | None = None
-    is_local: bool | None = None
+    container_type: str | None = None  # "local", "host", "bridge", "docker"
     template_id: str | None = None
     sessions: list[TmuxSessionResponse]
     created_at: str
@@ -183,3 +182,18 @@ class DismissRequest(CamelModel):
     container_id: str = ""
     tmux_session: str = ""
     tmux_window: int | None = None
+
+
+# --- Bridge ---
+
+
+class CreateBridgeRequest(CamelModel):
+    name: str
+
+
+class BridgeConfigResponse(CamelModel):
+    id: str
+    name: str
+    token: str | None = None
+    connected: bool = False
+    created_at: str

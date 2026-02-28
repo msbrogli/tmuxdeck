@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 from . import auth
 
 # Paths that skip authentication
-_PUBLIC_PREFIXES = ("/api/v1/auth/", "/health")
+_PUBLIC_PREFIXES = ("/api/v1/auth/", "/health", "/ws/bridge")
 
 # Notification endpoints called from hook scripts (no auth)
 _PUBLIC_EXACT_POST = (

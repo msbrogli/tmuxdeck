@@ -54,9 +54,9 @@ export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewS
 
   const { containers = [], dockerError } = data ?? {};
 
-  const special = containers.filter((c) => c.isHost || c.isLocal);
-  const running = containers.filter((c) => c.status === 'running' && !c.isHost && !c.isLocal);
-  const stopped = containers.filter((c) => c.status !== 'running' && !c.isHost && !c.isLocal);
+  const special = containers.filter((c) => c.containerType === 'host' || c.containerType === 'local' || c.containerType === 'bridge');
+  const running = containers.filter((c) => c.status === 'running' && !special.includes(c));
+  const stopped = containers.filter((c) => c.status !== 'running' && !special.includes(c));
 
   if (collapsed) {
     return (

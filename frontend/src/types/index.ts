@@ -1,4 +1,5 @@
 export type ContainerStatus = 'running' | 'stopped' | 'creating' | 'error';
+export type ContainerType = 'local' | 'host' | 'bridge' | 'docker';
 
 export interface SessionTarget {
   containerId: string;
@@ -49,8 +50,7 @@ export interface Container {
   displayName: string;
   status: ContainerStatus;
   image: string;
-  isHost?: boolean;
-  isLocal?: boolean;
+  containerType?: ContainerType;
   templateId?: string;
   sessions: TmuxSession[];
   createdAt: string;

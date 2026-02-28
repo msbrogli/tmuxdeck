@@ -15,6 +15,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from .. import auth
 from ..config import config
+from ..services.bridge_manager import BridgeManager, bridge_id_from_container, is_bridge
 from ..services.docker_manager import DockerManager
 from ..services.tmux_manager import _is_host, _is_local
 
@@ -313,6 +314,175 @@ async def _pty_terminal(
         await proc.wait()
 
 
+async def _bridge_terminal(
+    websocket: WebSocket,
+    container_id: str,
+    session_name: str,
+    window_index: int,
+) -> None:
+    """Handle a terminal session proxied through a bridge agent."""
+    bm = BridgeManager.get()
+    bid = bridge_id_from_container(container_id)
+    conn = bm.get_bridge(bid)
+    if not conn:
+        await websocket.close(code=4004, reason="Bridge not connected")
+        return
+
+    channel_id = conn.allocate_channel()
+
+    try:
+        # Request the bridge to attach to the tmux session
+        result = await conn.request({
+            "type": "attach",
+            "session_name": session_name,
+            "window_index": window_index,
+            "channel_id": channel_id,
+            "cols": 80,
+            "rows": 24,
+        })
+
+        if result.get("type") == "attach_error":
+            error = result.get("reason", "Unknown error")
+            logger.error("Bridge attach failed: %s", error)
+            await websocket.send_text(f"Bridge attach error: {error}\r\n")
+            return
+
+        # Register this user WS so bridge binary frames get routed here
+        conn.register_terminal(channel_id, websocket)
+
+        # Forward user input to bridge
+        try:
+            while True:
+                msg = await websocket.receive()
+
+                if msg.get("type") == "websocket.disconnect":
+                    break
+
+                if "text" in msg:
+                    text = msg["text"]
+                    if text.startswith("RESIZE:"):
+                        parts = text.split(":")
+                        if len(parts) == 3:
+                            try:
+                                cols = int(parts[1])
+                                rows = int(parts[2])
+                                await conn.send_json({
+                                    "type": "resize",
+                                    "channel_id": channel_id,
+                                    "cols": cols,
+                                    "rows": rows,
+                                })
+                            except (ValueError, Exception) as e:
+                                logger.debug("Bridge resize failed: %s", e)
+                        continue
+                    if text.startswith("SELECT_WINDOW:"):
+                        try:
+                            win_idx = int(text.split(":", 1)[1])
+                            await conn.request({
+                                "type": "tmux_cmd",
+                                "cmd": ["tmux", "select-window", "-t",
+                                         f"{session_name}:{win_idx}"],
+                            })
+                        except (ValueError, asyncio.TimeoutError, Exception) as e:
+                            logger.debug("Bridge select-window failed: %s", e)
+                        continue
+                    if text.startswith("SCROLL:"):
+                        try:
+                            parts = text.split(":")
+                            direction = parts[1] if len(parts) > 1 else ""
+                            if direction == "up":
+                                count = parts[2] if len(parts) > 2 else "3"
+                                await conn.request({
+                                    "type": "tmux_cmd",
+                                    "cmd": ["tmux", "copy-mode", "-e",
+                                             "-t", session_name],
+                                })
+                                await conn.request({
+                                    "type": "tmux_cmd",
+                                    "cmd": ["tmux", "send-keys",
+                                             "-t", session_name,
+                                             "-X", "-N", count, "scroll-up"],
+                                })
+                            elif direction == "down":
+                                count = parts[2] if len(parts) > 2 else "3"
+                                await conn.request({
+                                    "type": "tmux_cmd",
+                                    "cmd": ["tmux", "send-keys",
+                                             "-t", session_name,
+                                             "-X", "-N", count, "scroll-down"],
+                                })
+                            elif direction == "exit":
+                                await conn.request({
+                                    "type": "tmux_cmd",
+                                    "cmd": ["tmux", "send-keys",
+                                             "-t", session_name,
+                                             "-X", "cancel"],
+                                })
+                        except (ValueError, asyncio.TimeoutError, Exception) as e:
+                            logger.debug("Bridge scroll failed: %s", e)
+                        continue
+                    if text == "SHIFT_ENTER:":
+                        try:
+                            await conn.request({
+                                "type": "tmux_cmd",
+                                "cmd": ["tmux", "send-keys", "-l",
+                                         "-t", session_name, "--",
+                                         "\x1b[13;2u"],
+                            })
+                        except (ValueError, asyncio.TimeoutError, Exception) as e:
+                            logger.debug("Bridge shift-enter failed: %s", e)
+                        continue
+                    if text == "DISABLE_MOUSE:":
+                        try:
+                            await conn.request({
+                                "type": "tmux_cmd",
+                                "cmd": ["tmux", "set-option", "-g", "mouse", "off"],
+                            })
+                            await websocket.send_text("MOUSE_WARNING:off")
+                        except (ValueError, asyncio.TimeoutError, Exception) as e:
+                            logger.debug("Bridge disable-mouse failed: %s", e)
+                        continue
+                    if text == "FIX_BELL:":
+                        try:
+                            await conn.request({
+                                "type": "tmux_cmd",
+                                "cmd": ["tmux", "set-option", "-g",
+                                         "bell-action", "any"],
+                            })
+                            await conn.request({
+                                "type": "tmux_cmd",
+                                "cmd": ["tmux", "set-option", "-g",
+                                         "visual-bell", "off"],
+                            })
+                            await websocket.send_text("BELL_WARNING:ok")
+                        except (ValueError, asyncio.TimeoutError, Exception) as e:
+                            logger.debug("Bridge fix-bell failed: %s", e)
+                        continue
+                    # Regular text input → send as binary to bridge
+                    await conn.send_binary(channel_id, text.encode("utf-8"))
+                elif "bytes" in msg:
+                    await conn.send_binary(channel_id, msg["bytes"])
+
+        except (OSError, WebSocketDisconnect):
+            pass
+
+    except asyncio.TimeoutError:
+        logger.error("Bridge attach timed out for %s", container_id)
+        await websocket.send_text("Bridge attach timed out\r\n")
+    except Exception as e:
+        logger.error("Bridge terminal error: %s", e)
+    finally:
+        # Tell bridge to detach this channel
+        try:
+            await conn.send_json({
+                "type": "detach",
+                "channel_id": channel_id,
+            })
+        except Exception:
+            pass
+        conn.unregister_terminal(channel_id)
+
+
 @router.websocket("/ws/terminal/{container_id}/{session_name}/{window_index}")
 async def terminal_ws(
     websocket: WebSocket, container_id: str, session_name: str, window_index: int
@@ -326,6 +496,19 @@ async def terminal_ws(
 
     await websocket.accept()
     target = f"{session_name}:{window_index}"
+
+    # Bridge terminals
+    if is_bridge(container_id):
+        try:
+            await _bridge_terminal(websocket, container_id, session_name, window_index)
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            logger.error("Bridge terminal WebSocket error: %s", e)
+        finally:
+            with contextlib.suppress(Exception):
+                await websocket.close()
+        return
 
     if _is_local(container_id):
         try:

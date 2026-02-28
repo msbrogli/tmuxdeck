@@ -7,7 +7,7 @@ export const mockContainers: Container[] = [
     displayName: 'Local',
     status: 'running',
     image: 'local',
-    isLocal: true,
+    containerType: 'local',
     sessions: [
       { id: 'sl1', name: 'main', windows: [{ index: 0, name: 'bash', active: true, panes: 1, bell: false, activity: false, command: 'bash', paneStatus: '' }], created: '2026-02-24T07:00:00Z', attached: false },
     ],
@@ -19,7 +19,7 @@ export const mockContainers: Container[] = [
     displayName: 'Host',
     status: 'running',
     image: 'host',
-    isHost: true,
+    containerType: 'host',
     sessions: [
       { id: 'sh1', name: 'dev', windows: [
         { index: 0, name: 'vim', active: true, panes: 1, bell: false, activity: false, command: 'bash', paneStatus: '' },
