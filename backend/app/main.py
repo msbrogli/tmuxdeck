@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -82,6 +84,10 @@ async def lifespan(app: FastAPI):
     # Ensure data directories exist
     store._ensure_dir(config.data_path / "templates")
     store._ensure_dir(config.data_path / "containers")
+
+    # Use a larger thread pool for docker-py and other blocking I/O
+    executor = ThreadPoolExecutor(max_workers=16)
+    asyncio.get_running_loop().set_default_executor(executor)
 
     # Seed default templates
     _seed_templates()

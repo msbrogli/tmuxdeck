@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import pty
+import random
 import signal
 import struct
 import termios
@@ -17,7 +18,7 @@ from .. import auth
 from ..config import config
 from ..services.bridge_manager import BridgeManager, bridge_id_from_container, bridge_source_from_container, is_bridge
 from ..services.docker_manager import DockerManager
-from ..services.tmux_manager import _is_host, _is_local
+from ..services.tmux_manager import TmuxManager, _is_host, _is_local
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -121,6 +122,7 @@ async def _pty_terminal(
     label: str = "PTY",
     tmux_prefix: list[str] | None = None,
     session_name: str | None = None,
+    container_id: str | None = None,
 ) -> None:
     """Handle a tmux session via a local PTY with the given command.
 
@@ -152,12 +154,21 @@ async def _pty_terminal(
     loop = asyncio.get_event_loop()
 
     async def pty_to_ws() -> None:
+        pending_sends = 0
+        max_pending = 32
         try:
             while True:
-                data = await loop.run_in_executor(None, os.read, master_fd, 4096)
+                # Backpressure: if client is slow, pause reading from PTY
+                while pending_sends >= max_pending:
+                    await asyncio.sleep(0.05)
+                data = await loop.run_in_executor(None, os.read, master_fd, 16384)
                 if not data:
                     break
-                await websocket.send_bytes(data)
+                pending_sends += 1
+                try:
+                    await websocket.send_bytes(data)
+                finally:
+                    pending_sends -= 1
         except (OSError, WebSocketDisconnect):
             pass
 
@@ -199,6 +210,64 @@ async def _pty_terminal(
                             await sw.wait()
                         except (ValueError, OSError) as e:
                             logger.debug("%s select-window failed: %s", label, e)
+                        continue
+                    if text.startswith("SELECT_PANE:") and tmux_prefix and session_name:
+                        try:
+                            direction = text.split(":", 1)[1].strip()
+                            flag_map = {"U": "-U", "D": "-D", "L": "-L", "R": "-R"}
+                            flag = flag_map.get(direction)
+                            if flag:
+                                sp = await asyncio.create_subprocess_exec(
+                                    *tmux_prefix, "select-pane", flag,
+                                    "-t", session_name,
+                                    stdout=asyncio.subprocess.DEVNULL,
+                                    stderr=asyncio.subprocess.DEVNULL,
+                                    env=_clean_env(),
+                                )
+                                await sp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s select-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("TOGGLE_ZOOM:") and tmux_prefix and session_name:
+                        try:
+                            zp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "resize-pane", "-Z",
+                                "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await zp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s toggle-zoom failed: %s", label, e)
+                        continue
+                    if text.startswith("SPLIT_PANE:") and tmux_prefix and session_name:
+                        try:
+                            direction = text.split(":", 1)[1].strip()
+                            flag = "-v" if direction == "H" else "-h"
+                            sp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "split-window", flag,
+                                "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await sp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s split-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("KILL_PANE:") and tmux_prefix and session_name:
+                        try:
+                            kp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "kill-pane",
+                                "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await kp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s kill-pane failed: %s", label, e)
                         continue
                     if text.startswith("SCROLL:") and tmux_prefix and session_name:
                         try:
@@ -287,6 +356,83 @@ async def _pty_terminal(
                         except (ValueError, OSError) as e:
                             logger.debug("%s fix-bell failed: %s", label, e)
                         continue
+                    if text.startswith("LIST_PANES:") and tmux_prefix and session_name and container_id:
+                        try:
+                            win_idx = int(text.split(":", 1)[1])
+                            tm = TmuxManager.get()
+                            panes = await tm.list_panes(container_id, session_name, win_idx)
+                            await websocket.send_text(f"PANE_LIST:{json.dumps(panes)}")
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s list-panes failed: %s", label, e)
+                        continue
+                    if text.startswith("ZOOM_PANE:") and tmux_prefix and session_name:
+                        try:
+                            parts = text.split(":", 1)[1].split(".")
+                            win_idx = int(parts[0])
+                            pane_idx = int(parts[1])
+                            target = f"{session_name}:{win_idx}.{pane_idx}"
+                            sp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "select-pane", "-t", target,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await sp.wait()
+                            zp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "resize-pane", "-Z", "-t", target,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await zp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s zoom-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("UNZOOM_PANE:") and tmux_prefix and session_name:
+                        try:
+                            chk = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "display-message", "-p", "-t", session_name,
+                                "#{window_zoomed_flag}",
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            stdout, _ = await chk.communicate()
+                            if stdout.decode().strip() == "1":
+                                uz = await asyncio.create_subprocess_exec(
+                                    *tmux_prefix, "resize-pane", "-Z", "-t", session_name,
+                                    stdout=asyncio.subprocess.DEVNULL,
+                                    stderr=asyncio.subprocess.DEVNULL,
+                                    env=_clean_env(),
+                                )
+                                await uz.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s unzoom-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("CAPTURE_PANE:") and tmux_prefix and session_name and container_id:
+                        try:
+                            parts = text.split(":", 1)[1].split(".")
+                            win_idx = int(parts[0])
+                            pane_idx = int(parts[1])
+                            tm = TmuxManager.get()
+                            content = await tm.capture_pane_content(container_id, session_name, win_idx, pane_idx)
+                            await websocket.send_text(f"PANE_CONTENT:{win_idx}.{pane_idx}:{content}")
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s capture-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("HISTORY_REQUEST:") and tmux_prefix and session_name and container_id:
+                        try:
+                            tm = TmuxManager.get()
+                            content = await tm.capture_active_pane_history(
+                                container_id, session_name,
+                            )
+                            # Send as binary with a text prefix so the client
+                            # can feed raw ANSI bytes into the terminal buffer.
+                            header = b"HISTORY_DATA:"
+                            await websocket.send_bytes(header + content.encode("utf-8"))
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s history-request failed: %s", label, e)
+                        continue
                     await loop.run_in_executor(
                         None, os.write, master_fd, text.encode("utf-8")
                     )
@@ -296,11 +442,67 @@ async def _pty_terminal(
         except (OSError, WebSocketDisconnect):
             pass
 
+    async def poll_window_state() -> None:
+        """Periodically check tmux window state and notify the frontend."""
+        if not tmux_prefix or not session_name or not container_id:
+            logger.debug("%s poll_window_state: skipped (missing params)", label)
+            return
+        logger.debug("%s poll_window_state: started for %s/%s", label, container_id, session_name)
+        tm = TmuxManager.get()
+        last_active: int | None = None
+        last_windows: list[dict] | None = None
+        try:
+            while True:
+                await asyncio.sleep(3 + random.uniform(0, 1))
+                try:
+                    windows = await tm.list_windows(container_id, session_name)
+                    active = next(
+                        (w["index"] for w in windows if w.get("active")), None,
+                    )
+                    # Serialize to comparable form (ignore pane_status fluctuations)
+                    win_summary = [
+                        (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                        for w in windows
+                    ]
+                    last_summary = (
+                        [
+                            (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                            for w in last_windows
+                        ]
+                        if last_windows
+                        else None
+                    )
+
+                    if active != last_active or win_summary != last_summary:
+                        last_active = active
+                        last_windows = windows
+                        # Include panes of the active window
+                        panes = []
+                        if active is not None:
+                            try:
+                                panes = await tm.list_panes(container_id, session_name, active)
+                            except Exception:
+                                pass
+                        payload = json.dumps(
+                            {"active": active, "windows": windows, "panes": panes}
+                        )
+                        logger.debug("%s poll: sending WINDOW_STATE (active=%s, %d windows)",
+                                    label, active, len(windows))
+                        await websocket.send_text(f"WINDOW_STATE:{payload}")
+                except (OSError, asyncio.CancelledError):
+                    raise
+                except Exception as e:
+                    logger.warning("%s window poll failed: %s", label, e, exc_info=True)
+        except (asyncio.CancelledError, WebSocketDisconnect):
+            logger.debug("%s poll_window_state: stopped", label)
+            pass
+
     try:
         done, pending = await asyncio.wait(
             [
                 asyncio.create_task(pty_to_ws()),
                 asyncio.create_task(ws_to_pty()),
+                asyncio.create_task(poll_window_state()),
             ],
             return_when=asyncio.FIRST_COMPLETED,
         )
@@ -532,7 +734,8 @@ async def terminal_ws(
             await _set_tmux_monitor_activity(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Local",
-                                tmux_prefix=tmux_prefix, session_name=session_name)
+                                tmux_prefix=tmux_prefix, session_name=session_name,
+                                container_id=container_id)
         except WebSocketDisconnect:
             pass
         except Exception as e:
@@ -554,7 +757,8 @@ async def terminal_ws(
             await _set_tmux_monitor_activity(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Host",
-                                tmux_prefix=tmux_prefix, session_name=session_name)
+                                tmux_prefix=tmux_prefix, session_name=session_name,
+                                container_id=container_id)
         except WebSocketDisconnect:
             pass
         except Exception as e:
@@ -618,12 +822,21 @@ async def terminal_ws(
         async def docker_to_ws():
             """Read from docker exec socket, send to WebSocket as binary."""
             loop = asyncio.get_event_loop()
+            pending_sends = 0
+            max_pending = 32
             try:
                 while True:
-                    data = await loop.run_in_executor(None, raw_sock.recv, 4096)
+                    # Backpressure: if client is slow, pause reading
+                    while pending_sends >= max_pending:
+                        await asyncio.sleep(0.05)
+                    data = await loop.run_in_executor(None, raw_sock.recv, 16384)
                     if not data:
                         break
-                    await websocket.send_bytes(data)
+                    pending_sends += 1
+                    try:
+                        await websocket.send_bytes(data)
+                    finally:
+                        pending_sends -= 1
             except (OSError, WebSocketDisconnect):
                 pass
 
@@ -661,6 +874,52 @@ async def terminal_ws(
                                 )
                             except (ValueError, Exception) as e:
                                 logger.debug("select-window failed: %s", e)
+                            continue
+                        if text.startswith("SELECT_PANE:"):
+                            try:
+                                direction = text.split(":", 1)[1].strip()
+                                flag_map = {"U": "-U", "D": "-D", "L": "-L", "R": "-R"}
+                                flag = flag_map.get(direction)
+                                if flag:
+                                    await dm.exec_command(
+                                        container_id,
+                                        ["tmux", "select-pane", flag,
+                                         "-t", session_name],
+                                    )
+                            except (ValueError, Exception) as e:
+                                logger.debug("select-pane failed: %s", e)
+                            continue
+                        if text.startswith("TOGGLE_ZOOM:"):
+                            try:
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "resize-pane", "-Z",
+                                     "-t", session_name],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("toggle-zoom failed: %s", e)
+                            continue
+                        if text.startswith("SPLIT_PANE:"):
+                            try:
+                                direction = text.split(":", 1)[1].strip()
+                                flag = "-v" if direction == "H" else "-h"
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "split-window", flag,
+                                     "-t", session_name],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("split-pane failed: %s", e)
+                            continue
+                        if text.startswith("KILL_PANE:"):
+                            try:
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "kill-pane",
+                                     "-t", session_name],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("kill-pane failed: %s", e)
                             continue
                         # Handle scroll control messages
                         if text.startswith("SCROLL:"):
@@ -736,6 +995,69 @@ async def terminal_ws(
                             except (ValueError, Exception) as e:
                                 logger.debug("fix-bell failed: %s", e)
                             continue
+                        if text.startswith("LIST_PANES:"):
+                            try:
+                                win_idx = int(text.split(":", 1)[1])
+                                tm = TmuxManager.get()
+                                panes = await tm.list_panes(container_id, session_name, win_idx)
+                                await websocket.send_text(f"PANE_LIST:{json.dumps(panes)}")
+                            except (ValueError, Exception) as e:
+                                logger.debug("list-panes failed: %s", e)
+                            continue
+                        if text.startswith("ZOOM_PANE:"):
+                            try:
+                                parts = text.split(":", 1)[1].split(".")
+                                win_idx = int(parts[0])
+                                pane_idx = int(parts[1])
+                                target = f"{session_name}:{win_idx}.{pane_idx}"
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "select-pane", "-t", target],
+                                )
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "resize-pane", "-Z", "-t", target],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("zoom-pane failed: %s", e)
+                            continue
+                        if text.startswith("UNZOOM_PANE:"):
+                            try:
+                                zoomed = await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "display-message", "-p", "-t", session_name,
+                                     "#{window_zoomed_flag}"],
+                                )
+                                if zoomed.strip() == "1":
+                                    await dm.exec_command(
+                                        container_id,
+                                        ["tmux", "resize-pane", "-Z", "-t", session_name],
+                                    )
+                            except (ValueError, Exception) as e:
+                                logger.debug("unzoom-pane failed: %s", e)
+                            continue
+                        if text.startswith("CAPTURE_PANE:"):
+                            try:
+                                parts = text.split(":", 1)[1].split(".")
+                                win_idx = int(parts[0])
+                                pane_idx = int(parts[1])
+                                tm = TmuxManager.get()
+                                content = await tm.capture_pane_content(container_id, session_name, win_idx, pane_idx)
+                                await websocket.send_text(f"PANE_CONTENT:{win_idx}.{pane_idx}:{content}")
+                            except (ValueError, Exception) as e:
+                                logger.debug("capture-pane failed: %s", e)
+                            continue
+                        if text.startswith("HISTORY_REQUEST:"):
+                            try:
+                                tm = TmuxManager.get()
+                                content = await tm.capture_active_pane_history(
+                                    container_id, session_name,
+                                )
+                                header = b"HISTORY_DATA:"
+                                await websocket.send_bytes(header + content.encode("utf-8"))
+                            except (ValueError, Exception) as e:
+                                logger.debug("history-request failed: %s", e)
+                            continue
                         # Regular text input
                         await loop.run_in_executor(None, raw_sock.sendall, text.encode("utf-8"))
 
@@ -745,11 +1067,57 @@ async def terminal_ws(
             except (OSError, WebSocketDisconnect):
                 pass
 
-        # Run both directions concurrently
+        async def poll_docker_window_state() -> None:
+            """Periodically check tmux window state in docker container."""
+            tm = TmuxManager.get()
+            last_active: int | None = None
+            last_windows: list[dict] | None = None
+            try:
+                while True:
+                    await asyncio.sleep(3 + random.uniform(0, 1))
+                    try:
+                        windows = await tm.list_windows(container_id, session_name)
+                        active = next(
+                            (w["index"] for w in windows if w.get("active")), None,
+                        )
+                        win_summary = [
+                            (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                            for w in windows
+                        ]
+                        last_summary = (
+                            [
+                                (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                                for w in last_windows
+                            ]
+                            if last_windows
+                            else None
+                        )
+                        if active != last_active or win_summary != last_summary:
+                            last_active = active
+                            last_windows = windows
+                            panes = []
+                            if active is not None:
+                                try:
+                                    panes = await tm.list_panes(container_id, session_name, active)
+                                except Exception:
+                                    pass
+                            payload = json.dumps(
+                                {"active": active, "windows": windows, "panes": panes}
+                            )
+                            await websocket.send_text(f"WINDOW_STATE:{payload}")
+                    except (OSError, asyncio.CancelledError):
+                        raise
+                    except Exception as e:
+                        logger.debug("Docker window poll failed: %s", e)
+            except (asyncio.CancelledError, WebSocketDisconnect):
+                pass
+
+        # Run all directions concurrently
         done, pending = await asyncio.wait(
             [
                 asyncio.create_task(docker_to_ws()),
                 asyncio.create_task(ws_to_docker()),
+                asyncio.create_task(poll_docker_window_state()),
             ],
             return_when=asyncio.FIRST_COMPLETED,
         )

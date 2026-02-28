@@ -1,0 +1,35 @@
+name: TmuxDeck
+options:
+  bundleIdPrefix: com.tmuxdeck
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+packages:
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm.git
+    from: "1.0.0"
+
+targets:
+  TmuxDeck:
+    type: application
+    platform: iOS
+    sources:
+      - path: TmuxDeck
+    info:
+      path: TmuxDeck/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tmuxdeck.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
+        DEVELOPMENT_TEAM: ""
+        INFOPLIST_FILE: TmuxDeck/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: true
+    dependencies:
+      - package: SwiftTerm
+        product: SwiftTerm

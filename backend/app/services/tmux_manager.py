@@ -139,6 +139,43 @@ class TmuxManager:
             )
         return windows
 
+    async def _list_all_windows(self, container_id: str) -> dict[str, list[dict]]:
+        """List all windows across all sessions in a single tmux command.
+
+        Returns a dict mapping session_name -> list of window dicts.
+        """
+        output = await self._run_cmd(
+            container_id,
+            [
+                "tmux",
+                "list-windows",
+                "-a",
+                "-F",
+                "#{session_name}|#{window_index}|#{window_name}|#{window_active}|#{window_panes}|#{window_bell_flag}|#{window_activity_flag}|#{pane_current_command}|#{@pane_status}",
+            ],
+        )
+        windows_by_session: dict[str, list[dict]] = {}
+        for line in output.strip().splitlines():
+            line = line.strip()
+            if not line or "|" not in line:
+                continue
+            parts = line.split("|")
+            if len(parts) < 5:
+                continue
+            session_name = parts[0]
+            window = {
+                "index": int(parts[1]) if parts[1].isdigit() else 0,
+                "name": parts[2],
+                "active": parts[3] == "1",
+                "panes": int(parts[4]) if parts[4].isdigit() else 1,
+                "bell": parts[5] == "1" if len(parts) > 5 else False,
+                "activity": parts[6] == "1" if len(parts) > 6 else False,
+                "command": parts[7] if len(parts) > 7 else "",
+                "pane_status": parts[8] if len(parts) > 8 else "",
+            }
+            windows_by_session.setdefault(session_name, []).append(window)
+        return windows_by_session
+
     async def list_sessions(self, container_id: str) -> list[dict]:
         """List all tmux sessions in a container (or on the host).
 
@@ -154,6 +191,7 @@ class TmuxManager:
                 return [s for s in conn.sessions if s.get("source") == source]
             return []
 
+        # Fetch sessions and all windows in just 2 commands (instead of 1+N)
         output = await self._run_cmd(
             container_id,
             [
@@ -163,6 +201,8 @@ class TmuxManager:
                 "#{session_name}|#{session_windows}|#{session_created}|#{session_attached}",
             ],
         )
+        all_windows = await self._list_all_windows(container_id)
+
         sessions = []
         for line in output.strip().splitlines():
             line = line.strip()
@@ -179,7 +219,7 @@ class TmuxManager:
                 created = datetime.now(UTC).isoformat()
             attached = parts[3] == "1"
 
-            windows = await self.list_windows(container_id, name)
+            windows = all_windows.get(name, [])
 
             sessions.append(
                 {
@@ -351,6 +391,82 @@ class TmuxManager:
         await self._run_cmd(container_id, [
             "tmux", "set-option", "-p", "-t", f"{session_name}:{window_index}", "@pane_status", status,
         ])
+
+    async def list_panes(self, container_id: str, session_name: str, window_index: int) -> list[dict]:
+        """List all tmux panes in a window.
+
+        Returns a list of dicts with: index, active, width, height, title, command.
+        """
+        target = f"{session_name}:{window_index}"
+        output = await self._run_cmd(
+            container_id,
+            [
+                "tmux",
+                "list-panes",
+                "-t",
+                target,
+                "-F",
+                "#{pane_index}|#{pane_active}|#{pane_width}|#{pane_height}|#{pane_title}|#{pane_current_command}",
+            ],
+        )
+        panes = []
+        for line in output.strip().splitlines():
+            line = line.strip()
+            if not line or "|" not in line:
+                continue
+            parts = line.split("|")
+            if len(parts) < 4:
+                continue
+            panes.append(
+                {
+                    "index": int(parts[0]) if parts[0].isdigit() else 0,
+                    "active": parts[1] == "1",
+                    "width": int(parts[2]) if parts[2].isdigit() else 80,
+                    "height": int(parts[3]) if parts[3].isdigit() else 24,
+                    "title": parts[4] if len(parts) > 4 else "",
+                    "command": parts[5] if len(parts) > 5 else "",
+                }
+            )
+        return panes
+
+    async def capture_pane_content(
+        self, container_id: str, session_name: str, window_index: int, pane_index: int, max_lines: int = 2000
+    ) -> str:
+        """Capture pane scrollback content with ANSI escapes."""
+        target = f"{session_name}:{window_index}.{pane_index}"
+        output = await self._run_cmd(
+            container_id,
+            [
+                "tmux",
+                "capture-pane",
+                "-p",
+                "-e",
+                "-S",
+                f"-{max_lines}",
+                "-t",
+                target,
+            ],
+        )
+        return output
+
+    async def capture_active_pane_history(
+        self, container_id: str, session_name: str, max_lines: int = 5000
+    ) -> str:
+        """Capture scrollback of the currently active pane in the session."""
+        output = await self._run_cmd(
+            container_id,
+            [
+                "tmux",
+                "capture-pane",
+                "-p",
+                "-e",
+                "-S",
+                f"-{max_lines}",
+                "-t",
+                session_name,
+            ],
+        )
+        return output
 
     async def ensure_session(self, container_id: str, session_name: str) -> None:
         """Create a session if it doesn't already exist."""
