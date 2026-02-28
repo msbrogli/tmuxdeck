@@ -5,10 +5,27 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from ..schemas import CreateSessionRequest, CreateWindowRequest, MoveWindowRequest, RenameSessionRequest, SwapWindowsRequest, TmuxSessionResponse, TmuxWindowResponse
+from ..services.bridge_manager import BridgeManager, is_bridge
+from ..services.debug_log import DebugLog
 from ..services.tmux_manager import TmuxManager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/containers/{container_id}/sessions", tags=["sessions"])
+
+
+async def _refresh_bridge_sessions(container_id: str) -> None:
+    """Refresh cached session list for a bridge container."""
+    if not is_bridge(container_id):
+        return
+    bm = BridgeManager.get()
+    conn = bm.get_bridge_for_container(container_id)
+    if not conn:
+        return
+    tm = TmuxManager.get()
+    try:
+        conn.sessions = await tm.list_sessions(container_id)
+    except Exception:
+        logger.debug("Failed to refresh bridge sessions for %s", container_id)
 
 
 @router.get("", response_model=list[TmuxSessionResponse])
@@ -23,11 +40,15 @@ async def list_sessions(container_id: str):
 
 @router.post("", response_model=TmuxSessionResponse, status_code=201)
 async def create_session(container_id: str, req: CreateSessionRequest):
+    dl = DebugLog.get()
     tm = TmuxManager.get()
     try:
         session = await tm.create_session(container_id, req.name)
     except Exception as e:
+        dl.error("session", f"Failed to create session '{req.name}': {e}", f"container={container_id}")
         raise HTTPException(500, f"Failed to create session: {e}") from None
+    dl.info("session", f"Session created: {req.name}", f"container={container_id} id={session['id']}")
+    await _refresh_bridge_sessions(container_id)
     return TmuxSessionResponse(**session)
 
 
@@ -45,6 +66,7 @@ async def rename_session(container_id: str, session_id: str, req: RenameSessionR
         await tm.rename_session(container_id, old_name, req.name)
     except Exception as e:
         raise HTTPException(500, f"Failed to rename session: {e}") from None
+    await _refresh_bridge_sessions(container_id)
 
 
 @router.post("/{session_id}/swap-windows", status_code=204)
@@ -133,7 +155,11 @@ async def kill_session(container_id: str, session_id: str):
     if session_name is None:
         session_name = session_id
 
+    dl = DebugLog.get()
     try:
         await tm.kill_session(container_id, session_name)
     except Exception as e:
+        dl.error("session", f"Failed to kill session '{session_name}': {e}", f"container={container_id}")
         raise HTTPException(500, f"Failed to kill session: {e}") from None
+    dl.info("session", f"Session killed: {session_name}", f"container={container_id}")
+    await _refresh_bridge_sessions(container_id)

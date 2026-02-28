@@ -15,6 +15,7 @@ import { DockerIcon } from './icons/DockerIcon';
 import { api } from '../api/client';
 import { SessionItem } from './SessionItem';
 import { ConfirmDialog } from './ConfirmDialog';
+import { debugLog } from '../utils/debugLog';
 import { getSessionOrder, saveSessionOrder } from '../utils/sessionOrder';
 import { getContainerExpanded, saveContainerExpanded } from '../utils/sidebarState';
 
@@ -125,7 +126,13 @@ export function ContainerNode({
   const handleAddSession = async () => {
     const name = newSessionName.trim();
     if (name) {
-      await api.createSession(container.id, { name });
+      debugLog.info('session', `Creating session '${name}'`, `container=${container.id}`);
+      try {
+        await api.createSession(container.id, { name });
+        debugLog.info('session', `Session created: ${name}`, `container=${container.id}`);
+      } catch (e) {
+        debugLog.error('session', `Failed to create session '${name}': ${e}`, `container=${container.id}`);
+      }
       onRefresh();
     }
     setAddingSession(false);

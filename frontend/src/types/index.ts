@@ -148,3 +148,12 @@ export interface BridgeConfig {
   connected: boolean;
   createdAt: string;
 }
+
+export interface DebugLogEntry {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error';
+  source: string;
+  message: string;
+  detail?: string;
+}

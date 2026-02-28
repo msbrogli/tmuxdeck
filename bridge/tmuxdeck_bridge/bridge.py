@@ -263,9 +263,11 @@ class Bridge:
     def _build_tmux_cmd(self, cmd: list[str]) -> list[str]:
         """Apply host socket to tmux command if configured.
 
-        If host_tmux_socket is set, inserts -S <socket> after 'tmux'.
+        Only inserts -S <socket> when host_tmux_socket is set AND local mode
+        is disabled.  When local=True, commands run against the default local
+        tmux server.
         """
-        if self.config.host_tmux_socket and cmd and cmd[0] == "tmux":
+        if self.config.host_tmux_socket and not self.config.local and cmd and cmd[0] == "tmux":
             return [cmd[0], "-S", self.config.host_tmux_socket] + cmd[1:]
         return cmd
 

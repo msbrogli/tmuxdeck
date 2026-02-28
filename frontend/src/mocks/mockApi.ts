@@ -255,4 +255,10 @@ export const mockApi: ApiClient = {
     await delay();
     return { chats: [] as { chatId: number; username: string | null; firstName: string | null }[] };
   },
+
+  async listBridges() { return []; },
+  async createBridge(_name: string) { throw new Error('Not implemented in mock'); },
+  async deleteBridge(_id: string) {},
+  async getDebugLog() { return { entries: [] }; },
+  async clearDebugLog() {},
 };

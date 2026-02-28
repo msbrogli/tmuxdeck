@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from ..config import config
 from .bridge_manager import BridgeManager, is_bridge
+from .debug_log import DebugLog
 from .docker_manager import DockerManager
 
 logger = logging.getLogger(__name__)
@@ -79,16 +80,20 @@ class TmuxManager:
             return stdout.decode("utf-8", errors="replace")
         if _is_bridge(container_id):
             bm = BridgeManager.get()
+            dl = DebugLog.get()
             conn = bm.get_bridge_for_container(container_id)
             if not conn:
+                dl.warn("bridge", f"No bridge connection for {container_id}", f"cmd={cmd}")
                 return ""
             try:
                 result = await conn.request({"type": "tmux_cmd", "cmd": cmd})
                 if result.get("error"):
+                    dl.error("bridge", f"tmux_cmd error: {result['error']}", f"container={container_id} cmd={cmd}")
                     logger.debug("Bridge tmux_cmd error: %s", result["error"])
                     return ""
                 return result.get("output", "")
             except asyncio.TimeoutError:
+                dl.error("bridge", f"tmux_cmd timed out for {container_id}", f"cmd={cmd}")
                 logger.warning("Bridge tmux_cmd timed out for %s", container_id)
                 return ""
         return await self._get_docker().exec_command(container_id, cmd)
@@ -176,6 +181,8 @@ class TmuxManager:
 
     async def create_session(self, container_id: str, session_name: str) -> dict:
         """Create a new tmux session in the container (or on the host)."""
+        dl = DebugLog.get()
+        dl.info("tmux", f"Creating session '{session_name}'", f"container={container_id}")
         await self._run_cmd(
             container_id,
             ["tmux", "new-session", "-d", "-s", session_name],

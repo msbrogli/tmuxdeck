@@ -5,6 +5,7 @@ const tabs = [
   { label: 'Telegram', path: '/settings/telegram' },
   { label: 'Bridges', path: '/settings/bridges' },
   { label: 'Templates', path: '/settings/templates' },
+  { label: 'Log', path: '/settings/log' },
 ];
 
 export function SettingsTabs() {

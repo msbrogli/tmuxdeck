@@ -1,6 +1,7 @@
 import type {
   Container,
   ContainerListResponse,
+  DebugLogEntry,
   Template,
   TelegramChat,
   Settings,
@@ -52,6 +53,10 @@ export interface ApiClient {
   listBridges(): Promise<BridgeConfig[]>;
   createBridge(name: string): Promise<BridgeConfig>;
   deleteBridge(id: string): Promise<void>;
+
+  // Debug log
+  getDebugLog(): Promise<{ entries: DebugLogEntry[] }>;
+  clearDebugLog(): Promise<void>;
 }
 
 import { mockApi } from '../mocks/mockApi';

@@ -10,6 +10,8 @@ import uuid
 
 from fastapi import WebSocket
 
+from .debug_log import DebugLog
+
 logger = logging.getLogger(__name__)
 
 BRIDGE_PREFIX = "bridge:"
@@ -104,12 +106,14 @@ class BridgeManager:
         conn = BridgeConnection(bridge_id, name, ws)
         self.bridges[bridge_id] = conn
         logger.info("Bridge registered: %s (%s)", bridge_id, name)
+        DebugLog.get().info("bridge", f"Bridge connected: {name}", f"id={bridge_id}")
         return conn
 
     def unregister(self, bridge_id: str) -> None:
         conn = self.bridges.pop(bridge_id, None)
         if conn:
             logger.info("Bridge unregistered: %s (%s)", bridge_id, conn.name)
+            DebugLog.get().info("bridge", f"Bridge disconnected: {conn.name}", f"id={bridge_id}")
 
     def get_bridge(self, bridge_id: str) -> BridgeConnection | None:
         return self.bridges.get(bridge_id)

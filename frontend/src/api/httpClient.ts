@@ -5,6 +5,7 @@ import type {
   Container,
   ContainerListResponse,
   ContainerStreamEvent,
+  DebugLogEntry,
   Template,
   TelegramChat,
   Settings,
@@ -234,6 +235,10 @@ export const httpApi: ApiClient = {
     request<BridgeConfig>('/bridges', { method: 'POST', body: JSON.stringify({ name }) }),
   deleteBridge: (id: string) =>
     request<void>(`/bridges/${id}`, { method: 'DELETE' }),
+
+  // Debug log
+  getDebugLog: () => request<{ entries: DebugLogEntry[] }>('/debug-log'),
+  clearDebugLog: () => request<void>('/debug-log', { method: 'DELETE' }),
 };
 
 export async function createContainerStream(

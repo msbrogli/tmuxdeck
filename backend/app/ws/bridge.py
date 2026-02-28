@@ -15,6 +15,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from .. import store
 from ..services.bridge_manager import BridgeManager
+from ..services.debug_log import DebugLog
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -52,6 +53,7 @@ async def bridge_ws(websocket: WebSocket):
 
         bridge_config = store.get_bridge_by_token(token)
         if not bridge_config:
+            DebugLog.get().warn("bridge", f"Auth failed: invalid token from '{name}'")
             await websocket.send_text(json.dumps({
                 "type": "auth_error", "reason": "Invalid token",
             }))
@@ -141,6 +143,7 @@ async def bridge_ws(websocket: WebSocket):
         pass
     except Exception as e:
         logger.error("Bridge WebSocket error: %s", e)
+        DebugLog.get().error("bridge", f"WebSocket error: {e}", f"bridge_id={bridge_id}")
     finally:
         if conn:
             await conn.close_all_terminals()

@@ -11,6 +11,7 @@ from . import store
 from .api.auth import router as auth_router
 from .api.bridges import router as bridges_router
 from .api.containers import router as containers_router
+from .api.debug_log import router as debug_log_router
 from .api.files import router as files_router
 from .api.images import router as images_router
 from .api.notifications import router as notifications_router
@@ -126,6 +127,7 @@ app.include_router(sessions_router)
 app.include_router(templates_router)
 app.include_router(settings_router)
 app.include_router(notifications_router)
+app.include_router(debug_log_router)
 app.include_router(ws_router)
 app.include_router(bridge_ws_router)
 
