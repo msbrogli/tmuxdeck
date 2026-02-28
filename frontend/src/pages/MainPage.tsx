@@ -381,6 +381,46 @@ export function MainPage() {
         }
         return;
       }
+      // Fold source (container) directly
+      if (matchesBinding(e, hotkeys.foldSource)) {
+        if (selectedSession) {
+          e.preventDefault();
+          setContainerExpanded(selectedSession.containerId, false);
+          selectFoldedContainer({ containerId: selectedSession.containerId, containerFolded: true });
+        }
+        return;
+      }
+      // Unfold source (container) directly
+      if (matchesBinding(e, hotkeys.unfoldSource)) {
+        if (selectedSession && isFoldedContainerSelection(selectedSession)) {
+          e.preventDefault();
+          const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
+          if (containers) {
+            const container = containers.find((c) => c.id === selectedSession.containerId);
+            if (container) {
+              setContainerExpanded(selectedSession.containerId, true);
+              const ordered = sortSessionsByOrder(container.sessions, container.id);
+              if (ordered.length > 0) {
+                const firstSession = ordered[0];
+                if (!isSessionExpanded(container.id, firstSession.id)) {
+                  selectFoldedSession({
+                    containerId: container.id,
+                    sessionName: firstSession.name,
+                    sessionId: firstSession.id,
+                    folded: true,
+                  });
+                } else {
+                  const sortedWindows = [...firstSession.windows].sort((a, b) => a.index - b.index);
+                  if (sortedWindows.length > 0) {
+                    selectSession(container.id, firstSession.name, sortedWindows[0].index);
+                  }
+                }
+              }
+            }
+          }
+        }
+        return;
+      }
       // Fold current session / container
       if (matchesBinding(e, hotkeys.foldSession)) {
         if (selectedSession) {

@@ -7,6 +7,8 @@ export const DEFAULT_HOTKEYS: Record<string, string> = {
   unfoldSession: 'Ctrl+ArrowRight',
   moveWindowUp: 'Shift+Ctrl+ArrowUp',
   moveWindowDown: 'Shift+Ctrl+ArrowDown',
+  foldSource: 'Shift+Ctrl+ArrowLeft',
+  unfoldSource: 'Shift+Ctrl+ArrowRight',
   deselect: 'Escape Escape',
 };
 
@@ -19,6 +21,8 @@ export const HOTKEY_LABELS: Record<string, string> = {
   unfoldSession: 'Unfold session / container',
   moveWindowUp: 'Move window up',
   moveWindowDown: 'Move window down',
+  foldSource: 'Fold source (container)',
+  unfoldSource: 'Unfold source (container)',
   deselect: 'Deselect / logout',
 };
 

@@ -9,6 +9,7 @@ import { TemplatesPage } from './pages/TemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TelegramSettingsPage } from './pages/TelegramSettingsPage';
 import { BridgeSettingsPage } from './pages/BridgeSettingsPage';
+import { HotkeySettingsPage } from './pages/HotkeySettingsPage';
 import { DebugLogPage } from './pages/DebugLogPage';
 import { HelpPage } from './pages/HelpPage';
 import { useAuth } from './hooks/useAuth';
@@ -62,6 +63,7 @@ function App() {
                 <Route path="/" element={<MainPage />} />
                 <Route path="/settings/templates" element={<TemplatesPage />} />
                 <Route path="/settings/telegram" element={<TelegramSettingsPage />} />
+                <Route path="/settings/hotkeys" element={<HotkeySettingsPage />} />
                 <Route path="/settings/bridges" element={<BridgeSettingsPage />} />
                 <Route path="/settings/log" element={<DebugLogPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
