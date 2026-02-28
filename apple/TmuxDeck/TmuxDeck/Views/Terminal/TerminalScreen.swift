@@ -6,6 +6,7 @@ struct TerminalScreen: View {
     let container: ContainerResponse
     let session: TmuxSessionResponse
     @Binding var isFullscreen: Bool
+    var terminalPool: TerminalPoolService?
 
     @State private var viewModel: TerminalViewModel?
     @State private var hideTabBar = false
@@ -230,7 +231,8 @@ struct TerminalScreen: View {
                     preferences: preferences,
                     containerId: container.id,
                     sessionName: session.name,
-                    windows: session.windows
+                    windows: session.windows,
+                    terminalPool: terminalPool
                 )
             }
         }

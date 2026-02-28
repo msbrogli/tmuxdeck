@@ -3,6 +3,7 @@ import SwiftUI
 struct ContainerListView: View {
     @Bindable var viewModel: ContainerListViewModel
     @Environment(AppState.self) private var appState
+    @State private var showCreateContainer = false
 
     var body: some View {
         List(viewModel.filteredContainers) { container in
@@ -68,19 +69,27 @@ struct ContainerListView: View {
         .navigationTitle("Containers")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
+                HStack(spacing: 16) {
                     Button {
-                        Task { await appState.logout() }
+                        showCreateContainer = true
                     } label: {
-                        Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
+                        Image(systemName: "plus")
                     }
-                    Button {
-                        appState.currentScreen = .serverSetup
+
+                    Menu {
+                        Button {
+                            Task { await appState.logout() }
+                        } label: {
+                            Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                        Button {
+                            appState.currentScreen = .serverSetup
+                        } label: {
+                            Label("Switch Server", systemImage: "server.rack")
+                        }
                     } label: {
-                        Label("Switch Server", systemImage: "server.rack")
+                        Image(systemName: "gearshape")
                     }
-                } label: {
-                    Image(systemName: "gearshape")
                 }
             }
 
@@ -88,6 +97,11 @@ struct ContainerListView: View {
                 if viewModel.isLoading {
                     ProgressView()
                 }
+            }
+        }
+        .sheet(isPresented: $showCreateContainer) {
+            CreateContainerView(apiClient: appState.apiClient) {
+                Task { await viewModel.loadContainers() }
             }
         }
         .overlay {
@@ -117,6 +131,13 @@ struct ContainerCardView: View {
                 Text(container.displayName)
                     .font(.headline)
                     .lineLimit(1)
+
+                if !container.isSpecial && !container.image.isEmpty {
+                    Text(container.image)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
                 HStack(spacing: 8) {
                     StatusBadge(status: container.status)

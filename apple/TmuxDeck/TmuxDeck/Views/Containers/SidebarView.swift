@@ -10,6 +10,7 @@ struct SidebarView: View {
     @State private var containers: [ContainerResponse] = []
     @State private var isLoading = false
     @State private var searchText = ""
+    private let sessionOrderStore = SessionOrderStore()
     @State private var showNewSession = false
     @State private var showSettings = false
     @State private var showCreateContainer = false
@@ -162,7 +163,8 @@ struct SidebarView: View {
                 }
             }
         } else {
-            ForEach(container.sessions) { session in
+            let orderedSessions = sessionOrderStore.sorted(sessions: container.sessions, for: container.id)
+            ForEach(orderedSessions) { session in
                 DisclosureGroup {
                     ForEach(session.windows) { window in
                         let target = TerminalTarget(
@@ -173,9 +175,13 @@ struct SidebarView: View {
                         )
                         Label {
                             HStack(spacing: 6) {
+                                PaneStatusDot(window: window)
                                 Text("\(window.index): \(window.name)")
                                     .font(.subheadline)
                                     .lineLimit(1)
+                                if window.command.lowercased().contains("claude") && window.paneStatus.isEmpty {
+                                    ClaudeHooksHintIcon()
+                                }
                                 Spacer()
                                 if window.bell {
                                     Image(systemName: "bell.fill")
@@ -284,6 +290,11 @@ struct SidebarView: View {
                     }
                 }
             }
+            .onMove { source, destination in
+                var ids = orderedSessions.map(\.id)
+                ids.move(fromOffsets: source, toOffset: destination)
+                sessionOrderStore.setOrder(sessionIds: ids, for: container.id)
+            }
         }
     }
 
@@ -365,11 +376,21 @@ struct ContainerHeader: View {
     var body: some View {
         HStack(spacing: 6) {
             statusDot
-            Text(container.displayName)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .textCase(nil)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(container.displayName)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .textCase(nil)
+                    .foregroundStyle(.primary)
+
+                if !container.isSpecial && !container.image.isEmpty {
+                    Text(container.image)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                        .lineLimit(1)
+                }
+            }
 
             if container.isLocal == true {
                 Image(systemName: "laptopcomputer")

@@ -48,6 +48,12 @@
 		B1C2D3E4F5A60718A9B0C1E0 /* TmuxPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */; };
 		B1C2D3E4F5A60718A9B0C1E2 /* PaneIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */; };
 		C2D3E4F5A60718B9B0C1E4F5 /* ScrollbackOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A60718B9B0C1E4F6 /* ScrollbackOverlayView.swift */; };
+		D3E4F5A60718B9C1E5F6A701 /* FuzzyMatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A702 /* FuzzyMatch.swift */; };
+		D3E4F5A60718B9C1E5F6A703 /* ContainerStreamEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A704 /* ContainerStreamEvent.swift */; };
+		D3E4F5A60718B9C1E5F6A705 /* HotkeyEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A706 /* HotkeyEditorView.swift */; };
+		D3E4F5A60718B9C1E5F6A707 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A708 /* HelpView.swift */; };
+		D3E4F5A60718B9C1E5F6A709 /* TerminalPoolService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A70A /* TerminalPoolService.swift */; };
+		D3E4F5A60718B9C1E5F6A70B /* SessionOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A70C /* SessionOrderStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -93,6 +99,12 @@
 		B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxPane.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneIndicator.swift; sourceTree = "<group>"; };
 		C2D3E4F5A60718B9B0C1E4F6 /* ScrollbackOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollbackOverlayView.swift; sourceTree = "<group>"; };
+		D3E4F5A60718B9C1E5F6A702 /* FuzzyMatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzyMatch.swift; sourceTree = "<group>"; };
+		D3E4F5A60718B9C1E5F6A704 /* ContainerStreamEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerStreamEvent.swift; sourceTree = "<group>"; };
+		D3E4F5A60718B9C1E5F6A706 /* HotkeyEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyEditorView.swift; sourceTree = "<group>"; };
+		D3E4F5A60718B9C1E5F6A708 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
+		D3E4F5A60718B9C1E5F6A70A /* TerminalPoolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPoolService.swift; sourceTree = "<group>"; };
+		D3E4F5A60718B9C1E5F6A70C /* SessionOrderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionOrderStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				84B2F64173B314DF5311EDC7 /* Extensions.swift */,
+				D3E4F5A60718B9C1E5F6A702 /* FuzzyMatch.swift */,
 				A1B2C3D4E5F60718A9B0C1D3 /* UserPreferences.swift */,
 			);
 			path = Utilities;
@@ -137,8 +150,10 @@
 				EB22F2DAB7BB373DDECE5598 /* KeychainService.swift */,
 				69C7D1704E378227EEEF9676 /* NotificationService.swift */,
 				EA2441E989B56993C50B07B3 /* ServerDiscovery.swift */,
-				DBEB8C5D8C1DAF1931DFC608 /* TerminalConnection.swift */,
+				D3E4F5A60718B9C1E5F6A70C /* SessionOrderStore.swift */,
 				D724E357D33E472745896321 /* SpeechRecognitionService.swift */,
+				DBEB8C5D8C1DAF1931DFC608 /* TerminalConnection.swift */,
+				D3E4F5A60718B9C1E5F6A70A /* TerminalPoolService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -149,6 +164,7 @@
 				B625C7D9E33A0A618DAC7A7A /* AppSettings.swift */,
 				46E7522FE08F56239F110058 /* AuthModels.swift */,
 				34AD7876BDC9CADB44E3E970 /* Container.swift */,
+				D3E4F5A60718B9C1E5F6A704 /* ContainerStreamEvent.swift */,
 				3ECB4A2D15677E60D026B600 /* Notification.swift */,
 				941467C20EB764272F1D06BA /* ServerConfig.swift */,
 				686942F4D99F06B7885077E8 /* Template.swift */,
@@ -178,6 +194,8 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60718A9B0C1D7 /* ChangePINView.swift */,
+				D3E4F5A60718B9C1E5F6A708 /* HelpView.swift */,
+				D3E4F5A60718B9C1E5F6A706 /* HotkeyEditorView.swift */,
 				F9E1FFC9E7BBBFD41A9F6AF8 /* SettingsView.swift */,
 				A1B2C3D4E5F60718A9B0C1D5 /* TerminalThemeView.swift */,
 			);
@@ -364,6 +382,12 @@
 				B1C2D3E4F5A60718A9B0C1E0 /* TmuxPane.swift in Sources */,
 				B1C2D3E4F5A60718A9B0C1E2 /* PaneIndicator.swift in Sources */,
 				C2D3E4F5A60718B9B0C1E4F5 /* ScrollbackOverlayView.swift in Sources */,
+				D3E4F5A60718B9C1E5F6A701 /* FuzzyMatch.swift in Sources */,
+				D3E4F5A60718B9C1E5F6A703 /* ContainerStreamEvent.swift in Sources */,
+				D3E4F5A60718B9C1E5F6A705 /* HotkeyEditorView.swift in Sources */,
+				D3E4F5A60718B9C1E5F6A707 /* HelpView.swift in Sources */,
+				D3E4F5A60718B9C1E5F6A709 /* TerminalPoolService.swift in Sources */,
+				D3E4F5A60718B9C1E5F6A70B /* SessionOrderStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

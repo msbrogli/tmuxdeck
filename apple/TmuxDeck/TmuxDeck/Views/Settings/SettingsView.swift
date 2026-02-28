@@ -6,6 +6,13 @@ struct SettingsView: View {
     @State private var isLoading = false
     @State private var error: String?
 
+    // Editable copies for server settings
+    @State private var editableVolumes: [String] = []
+    @State private var editableSshKeyPath = ""
+    @State private var newVolume = ""
+    @State private var isSaving = false
+    @State private var isDirty = false
+
     var body: some View {
         Form {
             Section("Terminal") {
@@ -28,6 +35,62 @@ struct SettingsView: View {
                         Spacer()
                         Text(appState.preferences.currentTheme.name)
                             .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            if settings != nil {
+                Section("Default Volume Mounts") {
+                    ForEach(editableVolumes, id: \.self) { volume in
+                        Text(volume)
+                            .font(.system(.caption, design: .monospaced))
+                    }
+                    .onDelete { indices in
+                        editableVolumes.remove(atOffsets: indices)
+                        isDirty = true
+                    }
+
+                    HStack {
+                        TextField("/host:/container", text: $newVolume)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.system(.body, design: .monospaced))
+
+                        Button("Add") {
+                            guard !newVolume.isEmpty else { return }
+                            editableVolumes.append(newVolume)
+                            newVolume = ""
+                            isDirty = true
+                        }
+                        .disabled(newVolume.isEmpty)
+                    }
+                }
+
+                Section("SSH") {
+                    TextField("~/.ssh/id_rsa", text: $editableSshKeyPath)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.system(.body, design: .monospaced))
+                        .onChange(of: editableSshKeyPath) { _, _ in
+                            isDirty = true
+                        }
+                }
+
+                if let hotkeys = settings?.hotkeys, !hotkeys.isEmpty {
+                    Section("Keyboard Shortcuts") {
+                        NavigationLink {
+                            HotkeyEditorView(
+                                hotkeys: hotkeys,
+                                apiClient: appState.apiClient
+                            )
+                        } label: {
+                            HStack {
+                                Text("View Shortcuts")
+                                Spacer()
+                                Text("\(hotkeys.count) bindings")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -79,11 +142,24 @@ struct SettingsView: View {
             }
 
             Section("About") {
+                NavigationLink("Help") {
+                    HelpView()
+                }
                 LabeledContent("Version", value: "1.0.0")
                 LabeledContent("TmuxDeck", value: "iOS Client")
             }
         }
         .navigationTitle("Settings")
+        .toolbar {
+            if isDirty {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        Task { await saveSettings() }
+                    }
+                    .disabled(isSaving)
+                }
+            }
+        }
         .task {
             await loadSettings()
         }
@@ -92,10 +168,30 @@ struct SettingsView: View {
     private func loadSettings() async {
         isLoading = true
         do {
-            settings = try await appState.apiClient.getSettings()
+            let loaded = try await appState.apiClient.getSettings()
+            settings = loaded
+            editableVolumes = loaded.defaultVolumeMounts
+            editableSshKeyPath = loaded.sshKeyPath
+            isDirty = false
         } catch {
             self.error = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func saveSettings() async {
+        isSaving = true
+        do {
+            let request = UpdateSettingsRequest(
+                defaultVolumeMounts: editableVolumes,
+                sshKeyPath: editableSshKeyPath.isEmpty ? nil : editableSshKeyPath
+            )
+            let updated = try await appState.apiClient.updateSettings(request)
+            settings = updated
+            isDirty = false
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isSaving = false
     }
 }

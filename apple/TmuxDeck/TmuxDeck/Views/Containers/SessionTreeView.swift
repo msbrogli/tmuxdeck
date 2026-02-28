@@ -165,8 +165,14 @@ struct WindowRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            PaneStatusDot(window: window)
+
             Text("\(window.index): \(window.name)")
                 .font(.subheadline)
+
+            if window.command.lowercased().contains("claude") && window.paneStatus.isEmpty {
+                ClaudeHooksHintIcon()
+            }
 
             Spacer()
 

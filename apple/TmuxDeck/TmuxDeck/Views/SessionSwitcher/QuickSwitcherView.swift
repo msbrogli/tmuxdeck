@@ -5,7 +5,7 @@ struct QuickSwitcherView: View {
     var onSelect: ((TerminalTarget) -> Void)?
     @Environment(AppState.self) private var appState
     @State private var searchText = ""
-    @State private var results: [SwitcherItem] = []
+    @State private var results: [ScoredSwitcherItem] = []
     @State private var allItems: [SwitcherItem] = []
     @FocusState private var isSearchFocused: Bool
 
@@ -28,6 +28,14 @@ struct QuickSwitcherView: View {
         var icon: String {
             windowName != nil ? "rectangle.split.3x1" : "terminal"
         }
+    }
+
+    struct ScoredSwitcherItem: Identifiable {
+        let item: SwitcherItem
+        let matchIndices: [Int]
+        let score: Double
+
+        var id: UUID { item.id }
     }
 
     var body: some View {
@@ -64,33 +72,43 @@ struct QuickSwitcherView: View {
 
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(results) { item in
-                            Button {
-                                selectItem(item)
-                            } label: {
-                                HStack {
-                                    Image(systemName: item.icon)
-                                        .frame(width: 24)
-                                        .foregroundStyle(.secondary)
+                        if results.isEmpty && !searchText.isEmpty {
+                            Text("No results")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 24)
+                        } else {
+                            ForEach(results) { scored in
+                                Button {
+                                    selectItem(scored.item)
+                                } label: {
+                                    HStack {
+                                        Image(systemName: scored.item.icon)
+                                            .frame(width: 24)
+                                            .foregroundStyle(.secondary)
 
-                                    Text(item.displayTitle)
+                                        highlightedText(
+                                            scored.item.displayTitle,
+                                            indices: scored.matchIndices
+                                        )
                                         .font(.subheadline)
                                         .lineLimit(1)
 
-                                    Spacer()
+                                        Spacer()
 
-                                    Image(systemName: "arrow.right")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
+                                        Image(systemName: "arrow.right")
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 10)
+                                    .contentShape(Rectangle())
                                 }
-                                .padding(.horizontal)
-                                .padding(.vertical, 10)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+                                .buttonStyle(.plain)
 
-                            Divider()
-                                .padding(.leading, 48)
+                                Divider()
+                                    .padding(.leading, 48)
+                            }
                         }
                     }
                 }
@@ -107,6 +125,23 @@ struct QuickSwitcherView: View {
             isSearchFocused = true
             Task { await loadAllItems() }
         }
+    }
+
+    private func highlightedText(_ text: String, indices: [Int]) -> Text {
+        guard !indices.isEmpty else { return Text(text) }
+        let indexSet = Set(indices)
+        let chars = Array(text)
+        var result = Text("")
+        for (i, char) in chars.enumerated() {
+            if indexSet.contains(i) {
+                result = result + Text(String(char))
+                    .bold()
+                    .foregroundStyle(.tint)
+            } else {
+                result = result + Text(String(char))
+            }
+        }
+        return result
     }
 
     private func loadAllItems() async {
@@ -139,22 +174,24 @@ struct QuickSwitcherView: View {
             }
 
             allItems = items
-            results = items
+            results = items.map { ScoredSwitcherItem(item: $0, matchIndices: [], score: 0) }
         } catch {
-            // Failed to load — dismiss
+            // Failed to load
         }
     }
 
     private func filterResults(query: String) {
         if query.isEmpty {
-            results = allItems
+            results = allItems.map { ScoredSwitcherItem(item: $0, matchIndices: [], score: 0) }
             return
         }
 
-        let lowered = query.lowercased()
-        results = allItems.filter { item in
-            item.displayTitle.lowercased().contains(lowered)
+        results = allItems.compactMap { item in
+            let result = fuzzyMatch(query: query, target: item.displayTitle)
+            guard result.match else { return nil }
+            return ScoredSwitcherItem(item: item, matchIndices: result.indices, score: result.score)
         }
+        .sorted { $0.score > $1.score }
     }
 
     private func selectItem(_ item: SwitcherItem) {

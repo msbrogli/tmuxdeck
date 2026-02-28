@@ -81,6 +81,69 @@ final class APIClient {
         try await post("/api/v1/containers", body: request)
     }
 
+    func createContainerStream(
+        _ request: CreateContainerRequest,
+        onEvent: @MainActor @escaping (ContainerStreamEvent) -> Void
+    ) async throws -> ContainerResponse {
+        guard let baseURL = baseURL else { throw APIError.noServer }
+        guard let url = URL(string: "/api/v1/containers/stream", relativeTo: baseURL) else {
+            throw APIError.invalidURL
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.httpBody = try encoder.encode(request)
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.timeoutInterval = 300 // 5 min for long builds
+
+        let (bytes, response) = try await urlSession.bytes(for: urlRequest)
+        try validateResponse(response)
+
+        var result: ContainerResponse?
+        var buffer = ""
+
+        for try await byte in bytes {
+            let char = Character(UnicodeScalar(byte))
+            if char == "\n" {
+                let line = buffer.trimmingCharacters(in: .whitespaces)
+                buffer = ""
+                guard !line.isEmpty else { continue }
+
+                let raw = try decoder.decode(RawStreamEvent.self, from: Data(line.utf8))
+                let event = ContainerStreamEvent(from: raw)
+                await onEvent(event)
+
+                switch event {
+                case .complete(let container):
+                    result = container
+                case .error(_, let message):
+                    throw APIError.serverMessage(message)
+                default:
+                    break
+                }
+            } else {
+                buffer.append(char)
+            }
+        }
+
+        // Process remaining buffer
+        let remaining = buffer.trimmingCharacters(in: .whitespaces)
+        if !remaining.isEmpty {
+            let raw = try decoder.decode(RawStreamEvent.self, from: Data(remaining.utf8))
+            let event = ContainerStreamEvent(from: raw)
+            await onEvent(event)
+
+            if case .complete(let container) = event {
+                result = container
+            }
+        }
+
+        guard let container = result else {
+            throw APIError.invalidResponse
+        }
+        return container
+    }
+
     // MARK: - Sessions
 
     func getSessions(containerId: String) async throws -> [TmuxSessionResponse] {
@@ -269,6 +332,7 @@ enum APIError: LocalizedError {
     case unauthorized
     case notFound
     case serverError(Int)
+    case serverMessage(String)
     case decodingFailed(Error)
     case networkError(Error)
 
@@ -280,6 +344,7 @@ enum APIError: LocalizedError {
         case .unauthorized: return "Not authenticated"
         case .notFound: return "Resource not found"
         case .serverError(let code): return "Server error (\(code))"
+        case .serverMessage(let msg): return msg
         case .decodingFailed(let error): return "Failed to decode response: \(error.localizedDescription)"
         case .networkError(let error): return error.localizedDescription
         }
