@@ -209,6 +209,34 @@ async def _pty_terminal(
                         except (ValueError, OSError) as e:
                             logger.debug("%s toggle-zoom failed: %s", label, e)
                         continue
+                    if text.startswith("SPLIT_PANE:") and tmux_prefix and session_name:
+                        try:
+                            direction = text.split(":", 1)[1].strip()
+                            flag = "-v" if direction == "H" else "-h"
+                            sp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "split-window", flag,
+                                "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await sp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s split-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("KILL_PANE:") and tmux_prefix and session_name:
+                        try:
+                            kp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "kill-pane",
+                                "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await kp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s kill-pane failed: %s", label, e)
+                        continue
                     if text.startswith("SCROLL:") and tmux_prefix and session_name:
                         try:
                             parts = text.split(":")
@@ -614,6 +642,28 @@ async def terminal_ws(
                                 )
                             except (ValueError, Exception) as e:
                                 logger.debug("toggle-zoom failed: %s", e)
+                            continue
+                        if text.startswith("SPLIT_PANE:"):
+                            try:
+                                direction = text.split(":", 1)[1].strip()
+                                flag = "-v" if direction == "H" else "-h"
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "split-window", flag,
+                                     "-t", session_name],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("split-pane failed: %s", e)
+                            continue
+                        if text.startswith("KILL_PANE:"):
+                            try:
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "kill-pane",
+                                     "-t", session_name],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("kill-pane failed: %s", e)
                             continue
                         # Handle scroll control messages
                         if text.startswith("SCROLL:"):
