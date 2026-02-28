@@ -6,7 +6,9 @@ enum InputMode {
 
 struct TerminalInputControl: View {
     let onText: (String) -> Void
-    var onRawInput: ((Data) -> Void)?
+    let onRawInput: (Data) -> Void
+    let onSelectPane: (String) -> Void
+    let onToggleZoom: () -> Void
     @Binding var inputMode: InputMode
 
     @State private var speech = SpeechRecognitionService()
@@ -89,11 +91,36 @@ struct TerminalInputControl: View {
             } else {
                 // Ctrl+C button
                 Button {
-                    onRawInput?(Data([0x03]))
+                    onRawInput(Data([0x03]))
                 } label: {
                     Image(systemName: "stop.circle.fill")
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(.red.opacity(0.6))
+                        .frame(width: 36, height: 48)
+                }
+
+                // Tmux navigation menu
+                Menu {
+                    Button { onSelectPane("U") } label: {
+                        Label("Navigate Up", systemImage: "arrow.up")
+                    }
+                    Button { onSelectPane("D") } label: {
+                        Label("Navigate Down", systemImage: "arrow.down")
+                    }
+                    Button { onSelectPane("L") } label: {
+                        Label("Navigate Left", systemImage: "arrow.left")
+                    }
+                    Button { onSelectPane("R") } label: {
+                        Label("Navigate Right", systemImage: "arrow.right")
+                    }
+                    Divider()
+                    Button { onToggleZoom() } label: {
+                        Label("Fullscreen Pane", systemImage: "arrow.up.left.and.arrow.down.right")
+                    }
+                } label: {
+                    Image(systemName: "rectangle.split.3x3")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.primary.opacity(0.5))
                         .frame(width: 36, height: 48)
                 }
 
@@ -117,7 +144,7 @@ struct TerminalInputControl: View {
 
                 // Enter button
                 Button {
-                    onRawInput?(Data([0x0d])) // carriage return
+                    onRawInput(Data([0x0d])) // carriage return
                 } label: {
                     Image(systemName: "return")
                         .font(.system(size: 14, weight: .medium))
@@ -226,6 +253,7 @@ struct TerminalInputControl: View {
             showSentConfirmation = false
         }
     }
+
 
     private func startWaveformSampling() {
         waveformTimer = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { _ in

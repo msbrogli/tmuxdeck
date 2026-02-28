@@ -108,6 +108,14 @@ final class TerminalConnection {
         sendText("SCROLL:\(direction):\(count)")
     }
 
+    func selectPane(direction: String) {
+        sendText("SELECT_PANE:\(direction)")
+    }
+
+    func toggleZoom() {
+        sendText("TOGGLE_ZOOM:")
+    }
+
     func disableMouse() {
         sendText("DISABLE_MOUSE:")
     }
@@ -147,7 +155,7 @@ final class TerminalConnection {
                 case .string(let text):
                     if text.hasPrefix("MOUSE_WARNING:") || text.hasPrefix("BELL_WARNING:")
                         || text.hasPrefix("WINDOW_STATE:")
-                        || text.hasPrefix("PANE_LIST:") || text.hasPrefix("PANE_CONTENT:") {
+                        || text.hasPrefix("PANE_LIST:") {
                         Task { @MainActor in
                             self.onTextMessage?(text)
                         }

@@ -90,40 +90,25 @@ final class TerminalViewModel {
     func switchWindow(to index: Int) {
         activeWindowIndex = index
         connection.selectWindow(index: index)
-        if mode == .app {
-            connection.listPanes(windowIndex: index)
-        }
     }
 
     func toggleMode() {
         if mode == .tmux {
-            enterAppMode()
+            mode = .app
         } else {
-            exitAppMode()
+            mode = .tmux
         }
     }
 
-    func enterAppMode() {
-        mode = .app
-        connection.listPanes(windowIndex: activeWindowIndex)
-    }
-
-    private func exitAppMode() {
-        mode = .tmux
-        isZoomed = false
-        connection.unzoomPane()
-    }
-
+    /// Switch to next/previous pane using raw tmux key sequences (Ctrl+B prefix)
     func switchPane(direction: Int) {
-        guard panes.count > 1 else { return }
-        guard let currentPos = panes.firstIndex(where: { $0.index == activePaneIndex }) else { return }
-        let nextPos = currentPos + direction
-        guard nextPos >= 0, nextPos < panes.count else { return }
-        let nextPane = panes[nextPos]
-        activePaneIndex = nextPane.index
-        isZoomed = true
-        connection.zoomPane(windowIndex: activeWindowIndex, paneIndex: nextPane.index)
-        connection.capturePane(windowIndex: activeWindowIndex, paneIndex: nextPane.index)
+        if direction > 0 {
+            // Ctrl+B then 'o' = next pane
+            connection.sendBinary(Data([0x02, 0x6f]))
+        } else {
+            // Ctrl+B then ';' = previous pane
+            connection.sendBinary(Data([0x02, 0x3b]))
+        }
     }
 
     func createWindow(name: String? = nil) async {
@@ -178,10 +163,6 @@ final class TerminalViewModel {
             connection.fixBell()
         } else if message.hasPrefix("WINDOW_STATE:") {
             handleWindowStateUpdate(message)
-        } else if message.hasPrefix("PANE_LIST:") {
-            handlePaneList(message)
-        } else if message.hasPrefix("PANE_CONTENT:") {
-            handlePaneContent(message)
         }
     }
 
@@ -210,35 +191,4 @@ final class TerminalViewModel {
         } catch {}
     }
 
-    private func handlePaneList(_ message: String) {
-        let jsonString = String(message.dropFirst("PANE_LIST:".count))
-        guard let data = jsonString.data(using: .utf8) else { return }
-
-        do {
-            let decoded = try JSONDecoder().decode([TmuxPaneResponse].self, from: data)
-            panes = decoded
-            if mode == .app {
-                let activePane = decoded.first(where: { $0.active }) ?? decoded.first
-                if let pane = activePane {
-                    activePaneIndex = pane.index
-                    isZoomed = true
-                    connection.zoomPane(windowIndex: activeWindowIndex, paneIndex: pane.index)
-                    connection.capturePane(windowIndex: activeWindowIndex, paneIndex: pane.index)
-                }
-            }
-        } catch {}
-    }
-
-    private func handlePaneContent(_ message: String) {
-        let rest = String(message.dropFirst("PANE_CONTENT:".count))
-        guard let colonIdx = rest.firstIndex(of: ":") else { return }
-        let content = String(rest[rest.index(after: colonIdx)...])
-
-        // Clear terminal and feed scrollback content
-        let clearSeq: [UInt8] = [0x1b, 0x5b, 0x32, 0x4a, 0x1b, 0x5b, 0x48] // ESC[2J ESC[H
-        feedHandler?(clearSeq)
-        if let contentBytes = content.data(using: .utf8) {
-            feedHandler?([UInt8](contentBytes))
-        }
-    }
 }
