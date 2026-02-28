@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from .. import store
-from ..schemas import BridgeConfigResponse, CreateBridgeRequest
+from ..schemas import BridgeConfigResponse, CreateBridgeRequest, UpdateBridgeRequest
 from ..services.bridge_manager import BridgeManager
 
 router = APIRouter(prefix="/api/v1/bridges", tags=["bridges"])
@@ -22,6 +22,7 @@ async def list_bridges():
             name=cfg["name"],
             token=None,  # never expose token in list
             connected=bm.is_connected(cfg["id"]),
+            enabled=cfg.get("enabled", True),
             created_at=cfg["createdAt"],
         ))
     return results
@@ -35,6 +36,40 @@ async def create_bridge(req: CreateBridgeRequest):
         name=cfg["name"],
         token=cfg["token"],  # shown once on creation
         connected=False,
+        enabled=cfg.get("enabled", True),
+        created_at=cfg["createdAt"],
+    )
+
+
+@router.patch("/{bridge_id}", response_model=BridgeConfigResponse)
+async def update_bridge(bridge_id: str, req: UpdateBridgeRequest):
+    updates = req.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+
+    cfg = store.update_bridge_config(bridge_id, updates)
+    if not cfg:
+        raise HTTPException(404, f"Bridge {bridge_id} not found")
+
+    bm = BridgeManager.get()
+
+    # If disabling, disconnect the bridge
+    if req.enabled is False:
+        conn = bm.get_bridge(bridge_id)
+        if conn:
+            await conn.close_all_terminals()
+            bm.unregister(bridge_id)
+            try:
+                await conn.ws.close(code=1000, reason="Bridge disabled")
+            except Exception:
+                pass
+
+    return BridgeConfigResponse(
+        id=cfg["id"],
+        name=cfg["name"],
+        token=None,
+        connected=bm.is_connected(cfg["id"]),
+        enabled=cfg.get("enabled", True),
         created_at=cfg["createdAt"],
     )
 

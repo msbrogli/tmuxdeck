@@ -191,9 +191,14 @@ class CreateBridgeRequest(CamelModel):
     name: str
 
 
+class UpdateBridgeRequest(CamelModel):
+    enabled: bool | None = None
+
+
 class BridgeConfigResponse(CamelModel):
     id: str
     name: str
     token: str | None = None
     connected: bool = False
+    enabled: bool = True
     created_at: str

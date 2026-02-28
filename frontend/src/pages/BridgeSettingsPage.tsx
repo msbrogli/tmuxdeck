@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Copy, Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { api } from '../api/client';
 import { SettingsTabs } from '../components/SettingsTabs';
 import type { BridgeConfig } from '../types';
@@ -23,6 +23,14 @@ export function BridgeSettingsPage() {
     onSuccess: (bridge) => {
       setCreatedBridge(bridge);
       setNewName('');
+      queryClient.invalidateQueries({ queryKey: ['bridges'] });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      api.updateBridge(id, { enabled }),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bridges'] });
     },
   });
@@ -149,28 +157,48 @@ export function BridgeSettingsPage() {
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className={`w-2 h-2 rounded-full ${bridge.connected ? 'bg-green-500' : 'bg-gray-600'}`}
-                      title={bridge.connected ? 'Online' : 'Offline'}
+                      className={`w-2 h-2 rounded-full ${
+                        !bridge.enabled ? 'bg-gray-600' : bridge.connected ? 'bg-green-500' : 'bg-gray-600'
+                      }`}
+                      title={!bridge.enabled ? 'Disabled' : bridge.connected ? 'Online' : 'Offline'}
                     />
-                    <span className="text-sm text-gray-200">{bridge.name}</span>
-                    <span className={`text-xs ${bridge.connected ? 'text-green-400' : 'text-gray-500'}`}>
-                      {bridge.connected ? 'Online' : 'Offline'}
+                    <span className={`text-sm ${bridge.enabled ? 'text-gray-200' : 'text-gray-500'}`}>
+                      {bridge.name}
+                    </span>
+                    <span className={`text-xs ${
+                      !bridge.enabled ? 'text-gray-600' : bridge.connected ? 'text-green-400' : 'text-gray-500'
+                    }`}>
+                      {!bridge.enabled ? 'Disabled' : bridge.connected ? 'Online' : 'Offline'}
                     </span>
                     <span className="text-xs text-gray-600">
                       {new Date(bridge.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      setDeletingBridge(bridge);
-                      setDeleteConfirmName('');
-                      deleteMutation.reset();
-                    }}
-                    className="p-1 text-gray-500 hover:text-red-400 transition-colors"
-                    title="Delete bridge"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => toggleMutation.mutate({ id: bridge.id, enabled: !bridge.enabled })}
+                      disabled={toggleMutation.isPending}
+                      className={`p-1 transition-colors ${
+                        bridge.enabled
+                          ? 'text-green-400 hover:text-green-300'
+                          : 'text-gray-600 hover:text-gray-400'
+                      }`}
+                      title={bridge.enabled ? 'Disable bridge' : 'Enable bridge'}
+                    >
+                      {bridge.enabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDeletingBridge(bridge);
+                        setDeleteConfirmName('');
+                        deleteMutation.reset();
+                      }}
+                      className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+                      title="Delete bridge"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

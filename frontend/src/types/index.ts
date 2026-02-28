@@ -155,6 +155,7 @@ export interface BridgeConfig {
   name: string;
   token: string | null;
   connected: boolean;
+  enabled: boolean;
   createdAt: string;
 }
 

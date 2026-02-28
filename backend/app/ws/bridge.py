@@ -60,6 +60,14 @@ async def bridge_ws(websocket: WebSocket):
             await websocket.close(code=4001)
             return
 
+        if not bridge_config.get("enabled", True):
+            DebugLog.get().warn("bridge", f"Auth rejected: bridge '{bridge_config['name']}' is disabled")
+            await websocket.send_text(json.dumps({
+                "type": "auth_error", "reason": "Bridge is disabled",
+            }))
+            await websocket.close(code=4001)
+            return
+
         bridge_id = bridge_config["id"]
 
         # Disconnect existing connection for this bridge if any

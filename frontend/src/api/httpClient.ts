@@ -233,6 +233,8 @@ export const httpApi: ApiClient = {
   listBridges: () => request<BridgeConfig[]>('/bridges'),
   createBridge: (name: string) =>
     request<BridgeConfig>('/bridges', { method: 'POST', body: JSON.stringify({ name }) }),
+  updateBridge: (id: string, data: { enabled?: boolean }) =>
+    request<BridgeConfig>(`/bridges/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteBridge: (id: string) =>
     request<void>(`/bridges/${id}`, { method: 'DELETE' }),
 

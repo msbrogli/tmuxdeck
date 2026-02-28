@@ -308,11 +308,24 @@ def create_bridge_config(name: str) -> dict[str, Any]:
         "id": str(uuid.uuid4())[:8],
         "name": name,
         "token": secrets.token_urlsafe(32),
+        "enabled": True,
         "createdAt": _now(),
     }
     bridges.append(record)
     _save_bridges(bridges)
     return record
+
+
+def update_bridge_config(bridge_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    bridges = _load_bridges()
+    for b in bridges:
+        if b["id"] == bridge_id:
+            for key, value in data.items():
+                if value is not None:
+                    b[key] = value
+            _save_bridges(bridges)
+            return b
+    return None
 
 
 def delete_bridge_config(bridge_id: str) -> bool:
