@@ -27,6 +27,12 @@ final class AppState {
     init() {
         notificationService.configure(apiClient: apiClient)
 
+        apiClient.onUnauthorized = { [weak self] in
+            guard let self, self.currentScreen == .main else { return }
+            self.notificationService.stopListening()
+            self.currentScreen = .login
+        }
+
         if let active = servers.first(where: { $0.isActive }) {
             activeServer = active
             apiClient.configure(with: active)

@@ -161,7 +161,7 @@ struct AdaptiveContainerView: View {
         .navigationSplitViewStyle(.balanced)
         .modifier(KeyboardShortcutReceiver(
             isFullscreen: $isFullscreen,
-            selectedTarget: $selectedTarget
+            onClose: { selectedTarget = nil }
         ))
     }
 
@@ -193,6 +193,10 @@ struct AdaptiveContainerView: View {
                 ProgressView("Loading...")
             }
         }
+        .modifier(KeyboardShortcutReceiver(
+            isFullscreen: $isFullscreen,
+            onClose: { selectedDestination = nil }
+        ))
         .task {
             if containerListVM == nil {
                 containerListVM = ContainerListViewModel(apiClient: appState.apiClient)
@@ -204,7 +208,7 @@ struct AdaptiveContainerView: View {
 
 struct KeyboardShortcutReceiver: ViewModifier {
     @Binding var isFullscreen: Bool
-    @Binding var selectedTarget: TerminalTarget?
+    var onClose: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -214,17 +218,7 @@ struct KeyboardShortcutReceiver: ViewModifier {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .closeTerminal)) { _ in
-                selectedTarget = nil
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .switchWindow)) { notif in
-                guard let index = notif.userInfo?["index"] as? Int,
-                      let target = selectedTarget else { return }
-                selectedTarget = TerminalTarget(
-                    containerId: target.containerId,
-                    containerName: target.containerName,
-                    session: target.session,
-                    windowIndex: index
-                )
+                onClose()
             }
     }
 }

@@ -288,6 +288,70 @@ async def _pty_terminal(
                         except (ValueError, OSError) as e:
                             logger.debug("%s fix-bell failed: %s", label, e)
                         continue
+                    if text.startswith("LIST_PANES:") and tmux_prefix and session_name and container_id:
+                        try:
+                            win_idx = int(text.split(":", 1)[1])
+                            tm = TmuxManager.get()
+                            panes = await tm.list_panes(container_id, session_name, win_idx)
+                            await websocket.send_text(f"PANE_LIST:{json.dumps(panes)}")
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s list-panes failed: %s", label, e)
+                        continue
+                    if text.startswith("ZOOM_PANE:") and tmux_prefix and session_name:
+                        try:
+                            parts = text.split(":", 1)[1].split(".")
+                            win_idx = int(parts[0])
+                            pane_idx = int(parts[1])
+                            target = f"{session_name}:{win_idx}.{pane_idx}"
+                            sp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "select-pane", "-t", target,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await sp.wait()
+                            zp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "resize-pane", "-Z", "-t", target,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await zp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s zoom-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("UNZOOM_PANE:") and tmux_prefix and session_name:
+                        try:
+                            chk = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "display-message", "-p", "-t", session_name,
+                                "#{window_zoomed_flag}",
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            stdout, _ = await chk.communicate()
+                            if stdout.decode().strip() == "1":
+                                uz = await asyncio.create_subprocess_exec(
+                                    *tmux_prefix, "resize-pane", "-Z", "-t", session_name,
+                                    stdout=asyncio.subprocess.DEVNULL,
+                                    stderr=asyncio.subprocess.DEVNULL,
+                                    env=_clean_env(),
+                                )
+                                await uz.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s unzoom-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("CAPTURE_PANE:") and tmux_prefix and session_name and container_id:
+                        try:
+                            parts = text.split(":", 1)[1].split(".")
+                            win_idx = int(parts[0])
+                            pane_idx = int(parts[1])
+                            tm = TmuxManager.get()
+                            content = await tm.capture_pane(container_id, session_name, win_idx, pane_idx)
+                            await websocket.send_text(f"PANE_CONTENT:{win_idx}.{pane_idx}:{content}")
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s capture-pane failed: %s", label, e)
+                        continue
                     await loop.run_in_executor(
                         None, os.write, master_fd, text.encode("utf-8")
                     )
@@ -331,8 +395,15 @@ async def _pty_terminal(
                     if active != last_active or win_summary != last_summary:
                         last_active = active
                         last_windows = windows
+                        # Include panes of the active window
+                        panes = []
+                        if active is not None:
+                            try:
+                                panes = await tm.list_panes(container_id, session_name, active)
+                            except Exception:
+                                pass
                         payload = json.dumps(
-                            {"active": active, "windows": windows}
+                            {"active": active, "windows": windows, "panes": panes}
                         )
                         logger.debug("%s poll: sending WINDOW_STATE (active=%s, %d windows)",
                                     label, active, len(windows))
@@ -788,6 +859,58 @@ async def terminal_ws(
                             except (ValueError, Exception) as e:
                                 logger.debug("fix-bell failed: %s", e)
                             continue
+                        if text.startswith("LIST_PANES:"):
+                            try:
+                                win_idx = int(text.split(":", 1)[1])
+                                tm = TmuxManager.get()
+                                panes = await tm.list_panes(container_id, session_name, win_idx)
+                                await websocket.send_text(f"PANE_LIST:{json.dumps(panes)}")
+                            except (ValueError, Exception) as e:
+                                logger.debug("list-panes failed: %s", e)
+                            continue
+                        if text.startswith("ZOOM_PANE:"):
+                            try:
+                                parts = text.split(":", 1)[1].split(".")
+                                win_idx = int(parts[0])
+                                pane_idx = int(parts[1])
+                                target = f"{session_name}:{win_idx}.{pane_idx}"
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "select-pane", "-t", target],
+                                )
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "resize-pane", "-Z", "-t", target],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("zoom-pane failed: %s", e)
+                            continue
+                        if text.startswith("UNZOOM_PANE:"):
+                            try:
+                                zoomed = await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "display-message", "-p", "-t", session_name,
+                                     "#{window_zoomed_flag}"],
+                                )
+                                if zoomed.strip() == "1":
+                                    await dm.exec_command(
+                                        container_id,
+                                        ["tmux", "resize-pane", "-Z", "-t", session_name],
+                                    )
+                            except (ValueError, Exception) as e:
+                                logger.debug("unzoom-pane failed: %s", e)
+                            continue
+                        if text.startswith("CAPTURE_PANE:"):
+                            try:
+                                parts = text.split(":", 1)[1].split(".")
+                                win_idx = int(parts[0])
+                                pane_idx = int(parts[1])
+                                tm = TmuxManager.get()
+                                content = await tm.capture_pane(container_id, session_name, win_idx, pane_idx)
+                                await websocket.send_text(f"PANE_CONTENT:{win_idx}.{pane_idx}:{content}")
+                            except (ValueError, Exception) as e:
+                                logger.debug("capture-pane failed: %s", e)
+                            continue
                         # Regular text input
                         await loop.run_in_executor(None, raw_sock.sendall, text.encode("utf-8"))
 
@@ -825,8 +948,14 @@ async def terminal_ws(
                         if active != last_active or win_summary != last_summary:
                             last_active = active
                             last_windows = windows
+                            panes = []
+                            if active is not None:
+                                try:
+                                    panes = await tm.list_panes(container_id, session_name, active)
+                                except Exception:
+                                    pass
                             payload = json.dumps(
-                                {"active": active, "windows": windows}
+                                {"active": active, "windows": windows, "panes": panes}
                             )
                             await websocket.send_text(f"WINDOW_STATE:{payload}")
                     except (OSError, asyncio.CancelledError):

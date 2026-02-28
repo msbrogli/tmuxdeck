@@ -116,6 +116,22 @@ final class TerminalConnection {
         sendText("FIX_BELL:")
     }
 
+    func listPanes(windowIndex: Int) {
+        sendText("LIST_PANES:\(windowIndex)")
+    }
+
+    func zoomPane(windowIndex: Int, paneIndex: Int) {
+        sendText("ZOOM_PANE:\(windowIndex).\(paneIndex)")
+    }
+
+    func unzoomPane() {
+        sendText("UNZOOM_PANE:")
+    }
+
+    func capturePane(windowIndex: Int, paneIndex: Int) {
+        sendText("CAPTURE_PANE:\(windowIndex).\(paneIndex)")
+    }
+
     private func receiveMessage() {
         webSocketTask?.receive { [weak self] result in
             guard let self = self else { return }
@@ -130,7 +146,8 @@ final class TerminalConnection {
                     }
                 case .string(let text):
                     if text.hasPrefix("MOUSE_WARNING:") || text.hasPrefix("BELL_WARNING:")
-                        || text.hasPrefix("WINDOW_STATE:") {
+                        || text.hasPrefix("WINDOW_STATE:")
+                        || text.hasPrefix("PANE_LIST:") || text.hasPrefix("PANE_CONTENT:") {
                         Task { @MainActor in
                             self.onTextMessage?(text)
                         }

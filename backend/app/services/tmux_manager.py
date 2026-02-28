@@ -352,6 +352,43 @@ class TmuxManager:
             "tmux", "set-option", "-p", "-t", f"{session_name}:{window_index}", "@pane_status", status,
         ])
 
+    async def list_panes(self, container_id: str, session_name: str, window_index: int) -> list[dict]:
+        """List all tmux panes in a window.
+
+        Returns a list of dicts with: index, active, width, height, title, command.
+        """
+        target = f"{session_name}:{window_index}"
+        output = await self._run_cmd(
+            container_id,
+            [
+                "tmux",
+                "list-panes",
+                "-t",
+                target,
+                "-F",
+                "#{pane_index}|#{pane_active}|#{pane_width}|#{pane_height}|#{pane_title}|#{pane_current_command}",
+            ],
+        )
+        panes = []
+        for line in output.strip().splitlines():
+            line = line.strip()
+            if not line or "|" not in line:
+                continue
+            parts = line.split("|")
+            if len(parts) < 4:
+                continue
+            panes.append(
+                {
+                    "index": int(parts[0]) if parts[0].isdigit() else 0,
+                    "active": parts[1] == "1",
+                    "width": int(parts[2]) if parts[2].isdigit() else 80,
+                    "height": int(parts[3]) if parts[3].isdigit() else 24,
+                    "title": parts[4] if len(parts) > 4 else "",
+                    "command": parts[5] if len(parts) > 5 else "",
+                }
+            )
+        return panes
+
     async def ensure_session(self, container_id: str, session_name: str) -> None:
         """Create a session if it doesn't already exist."""
         sessions = await self.list_sessions(container_id)

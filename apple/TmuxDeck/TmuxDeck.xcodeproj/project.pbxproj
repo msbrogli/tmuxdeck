@@ -39,11 +39,14 @@
 		DA44242466EC043F2DF42DB8 /* TerminalViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE16EB0ACFF68EF6709EFFC0 /* TerminalViewModel.swift */; };
 		DDEDB77932CAAB9946C39BB3 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E7522FE08F56239F110058 /* AuthModels.swift */; };
 		E3C52D9B52A649327C2CA3D3 /* TerminalConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBEB8C5D8C1DAF1931DFC608 /* TerminalConnection.swift */; };
+		6E5F813B4852B8B0FC6AA018 /* QuickActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A827E8747FD22D800D0A4FEA /* QuickActionsSheet.swift */; };
 		A5C291FEFB51B8FADA9555D3 /* SpeechRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D724E357D33E472745896321 /* SpeechRecognitionService.swift */; };
 		2E273F6AECEEEA4F9374E47D /* VoiceInputButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBB292A794852C6A179AEAA /* VoiceInputButton.swift */; };
 		ED5928B56FA6CEE7F848D5C9 /* Container.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34AD7876BDC9CADB44E3E970 /* Container.swift */; };
 		F29C7F08180F420215552B15 /* ServerDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2441E989B56993C50B07B3 /* ServerDiscovery.swift */; };
 		FA2A11E1FA826AF2345F1C5F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304971475A69816599336A8D /* APIClient.swift */; };
+		B1C2D3E4F5A60718A9B0C1E0 /* TmuxPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */; };
+		B1C2D3E4F5A60718A9B0C1E2 /* PaneIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +77,7 @@
 		A3BA8E70C356D254EC0FCAA5 /* TmuxWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxWindow.swift; sourceTree = "<group>"; };
 		B625C7D9E33A0A618DAC7A7A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		BB4956421714875789CFB033 /* WindowTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTabBar.swift; sourceTree = "<group>"; };
+		A827E8747FD22D800D0A4FEA /* QuickActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsSheet.swift; sourceTree = "<group>"; };
 		EFBB292A794852C6A179AEAA /* VoiceInputButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputButton.swift; sourceTree = "<group>"; };
 		BE16EB0ACFF68EF6709EFFC0 /* TerminalViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewModel.swift; sourceTree = "<group>"; };
 		C4055CA80FEA96AEF1374EE2 /* TerminalScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalScreen.swift; sourceTree = "<group>"; };
@@ -85,6 +89,8 @@
 		EB22F2DAB7BB373DDECE5598 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		F9E1FFC9E7BBBFD41A9F6AF8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		FBD7F873CFE75C8F5D932B79 /* SwiftTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftTerminalView.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxPane.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneIndicator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,7 +111,9 @@
 				FBD7F873CFE75C8F5D932B79 /* SwiftTerminalView.swift */,
 				C4055CA80FEA96AEF1374EE2 /* TerminalScreen.swift */,
 				BB4956421714875789CFB033 /* WindowTabBar.swift */,
+				A827E8747FD22D800D0A4FEA /* QuickActionsSheet.swift */,
 				EFBB292A794852C6A179AEAA /* VoiceInputButton.swift */,
+				B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */,
 			);
 			path = Terminal;
 			sourceTree = "<group>";
@@ -143,6 +151,7 @@
 				686942F4D99F06B7885077E8 /* Template.swift */,
 				A26BB8E7ABEEEE4F61AC5051 /* TmuxSession.swift */,
 				A3BA8E70C356D254EC0FCAA5 /* TmuxWindow.swift */,
+				B1C2D3E4F5A60718A9B0C1E1 /* TmuxPane.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -335,6 +344,7 @@
 				0E2824552EAAE73CABA5925E /* SwiftTerminalView.swift in Sources */,
 				4D382F1D3C0EBE02DEB04217 /* Template.swift in Sources */,
 				E3C52D9B52A649327C2CA3D3 /* TerminalConnection.swift in Sources */,
+				6E5F813B4852B8B0FC6AA018 /* QuickActionsSheet.swift in Sources */,
 				A5C291FEFB51B8FADA9555D3 /* SpeechRecognitionService.swift in Sources */,
 				2E273F6AECEEEA4F9374E47D /* VoiceInputButton.swift in Sources */,
 				4E67F0D90E625983EB83B316 /* TerminalScreen.swift in Sources */,
@@ -348,6 +358,8 @@
 				A1B2C3D4E5F60718A9B0C1D6 /* ChangePINView.swift in Sources */,
 				A1B2C3D4E5F60718A9B0C1D8 /* NotificationBannerView.swift in Sources */,
 				A1B2C3D4E5F60718A9B0C1DA /* CreateContainerView.swift in Sources */,
+				B1C2D3E4F5A60718A9B0C1E0 /* TmuxPane.swift in Sources */,
+				B1C2D3E4F5A60718A9B0C1E2 /* PaneIndicator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

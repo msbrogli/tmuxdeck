@@ -236,6 +236,9 @@ final class APIClient {
         }
     }
 
+    /// Called when a 401 is received — set by AppState to redirect to login
+    var onUnauthorized: (() -> Void)?
+
     private func validateResponse(_ response: URLResponse) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -244,6 +247,9 @@ final class APIClient {
         case 200...299:
             return
         case 401:
+            Task { @MainActor in
+                onUnauthorized?()
+            }
             throw APIError.unauthorized
         case 404:
             throw APIError.notFound

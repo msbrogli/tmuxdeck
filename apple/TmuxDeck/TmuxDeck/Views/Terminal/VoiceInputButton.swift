@@ -1,35 +1,56 @@
 import SwiftUI
 
-struct VoiceInputButton: View {
+enum InputMode {
+    case voice, keyboard
+}
+
+struct TerminalInputControl: View {
     let onText: (String) -> Void
+    var onRawInput: ((Data) -> Void)?
+    @Binding var inputMode: InputMode
+
     @State private var speech = SpeechRecognitionService()
-    @State private var isPressing = false
+    @State private var isRecording = false
     @State private var hasPermission: Bool?
-    @State private var showTranscript = false
+    @State private var showSentConfirmation = false
     @State private var sentText = ""
-    @State private var pulsePhase: CGFloat = 0
     @State private var showLanguagePicker = false
-    @State private var pressStart: Date?
+    @State private var waveformSamples: [CGFloat] = Array(repeating: 0, count: 28)
+    @State private var waveformTimer: Timer?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            if showTranscript && !sentText.isEmpty {
-                transcriptToast
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Transcript bubble above bar (only while recording)
+            if isRecording && !speech.transcript.isEmpty {
+                Text(speech.transcript)
+                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(.red.opacity(0.75))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 6)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
-            if isPressing && !speech.transcript.isEmpty {
-                liveTranscript
+            if showSentConfirmation {
+                sentBar
                     .transition(.opacity)
+            } else {
+                // Single persistent bar — appearance changes, view stays
+                mainBar
             }
-
-            micButtonWithBadge
         }
-        .animation(.easeInOut(duration: 0.2), value: isPressing)
-        .animation(.easeInOut(duration: 0.2), value: showTranscript)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isRecording)
+        .animation(.easeOut(duration: 0.2), value: showSentConfirmation)
         .sheet(isPresented: $showLanguagePicker) {
             LanguagePickerSheet(
                 currentLocale: speech.locale,
@@ -45,165 +66,183 @@ struct VoiceInputButton: View {
         }
     }
 
-    // MARK: - Button + Language Badge
+    // MARK: - Main Bar (single persistent view — morphs between idle and recording)
 
-    private var micButtonWithBadge: some View {
-        VStack(spacing: 6) {
-            micButton
-            languageBadge
-        }
-    }
-
-    private var languageBadge: some View {
-        Text(speech.languageCode)
-            .font(.system(size: 10, weight: .bold, design: .rounded))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(.ultraThinMaterial, in: Capsule())
-    }
-
-    // MARK: - Mic Button
-
-    private var micButton: some View {
-        ZStack {
-            pulsingRings
-            buttonCircle
-            micIcon
-        }
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    if pressStart == nil {
-                        pressStart = Date()
-                    }
-                    if !isPressing, let start = pressStart, Date().timeIntervalSince(start) > 0.2 {
-                        startRecording()
+    private var mainBar: some View {
+        HStack(spacing: 0) {
+            if isRecording {
+                // Waveform
+                HStack(spacing: 1.5) {
+                    ForEach(0..<waveformSamples.count, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(.white.opacity(0.85))
+                            .frame(width: 2.5, height: max(3, waveformSamples[i] * 28))
                     }
                 }
-                .onEnded { _ in
-                    let wasQuickTap: Bool
-                    if let start = pressStart {
-                        wasQuickTap = Date().timeIntervalSince(start) < 0.25
-                    } else {
-                        wasQuickTap = true
-                    }
-                    pressStart = nil
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
 
-                    if isPressing {
-                        finishRecording()
-                    } else if wasQuickTap {
-                        showLanguagePicker = true
+                Text("Release to send")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.trailing, 14)
+            } else {
+                // Ctrl+C button
+                Button {
+                    onRawInput?(Data([0x03]))
+                } label: {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.6))
+                        .frame(width: 36, height: 48)
+                }
+
+                // PTT label area
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.primary.opacity(0.55))
+                        Text("Hold to speak")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(.primary.opacity(0.45))
                     }
                 }
-        )
-        .sensoryFeedback(.impact(weight: .medium), trigger: isPressing)
-        .opacity(hasPermission == false ? 0.4 : 1)
-        .disabled(hasPermission == false)
-    }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
 
-    @ViewBuilder
-    private var pulsingRings: some View {
-        if isPressing {
-            pulsingRing(index: 0)
-            pulsingRing(index: 1)
-            pulsingRing(index: 2)
-        }
-    }
+                // Enter button
+                Button {
+                    onRawInput?(Data([0x0d])) // carriage return
+                } label: {
+                    Image(systemName: "return")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary.opacity(0.5))
+                        .frame(width: 36, height: 48)
+                }
 
-    private func pulsingRing(index: Int) -> some View {
-        let size: CGFloat = 56 + CGFloat(index) * 16 + pulsePhase * 6
-        let opacity: Double = 0.15 - Double(index) * 0.04
-        let scale: CGFloat = 1 + CGFloat(speech.audioLevel) * 0.3 * CGFloat(index + 1)
-        return Circle()
-            .stroke(Color.white.opacity(opacity), lineWidth: 1.5)
-            .frame(width: size, height: size)
-            .scaleEffect(scale)
-    }
-
-    private var buttonCircle: some View {
-        Circle()
-            .fill(isPressing ? Color.red : Color(.systemBackground))
-            .frame(width: 52, height: 52)
-            .shadow(color: .black.opacity(isPressing ? 0.4 : 0.2), radius: isPressing ? 12 : 6, y: 2)
-            .overlay {
-                if isPressing {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [Color.red.opacity(0.3), Color.clear],
-                                center: .center,
-                                startRadius: 0,
-                                endRadius: 26
-                            )
-                        )
+                // Keyboard toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        inputMode = inputMode == .keyboard ? .voice : .keyboard
+                    }
+                } label: {
+                    Image(systemName: inputMode == .keyboard ? "mic.fill" : "keyboard")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.primary.opacity(0.5))
+                        .frame(width: 36, height: 48)
+                        .contentTransition(.symbolEffect(.replace))
                 }
             }
+        }
+        .frame(height: 48)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(isRecording ? AnyShapeStyle(Color.red.gradient) : AnyShapeStyle(.ultraThinMaterial))
+                .shadow(
+                    color: isRecording ? .red.opacity(0.25) : .black.opacity(0.08),
+                    radius: isRecording ? 8 : 4,
+                    y: isRecording ? 2 : -1
+                )
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 6)
+        // Gesture lives on the persistent container — survives visual changes
+        .gesture(pttGesture)
+        .sensoryFeedback(.impact(weight: .medium), trigger: isRecording)
+        .opacity(hasPermission == false && !isRecording ? 0.3 : 1)
     }
 
-    private var micIcon: some View {
-        Image(systemName: isPressing ? "waveform" : "mic.fill")
-            .font(.system(size: isPressing ? 20 : 18, weight: .semibold))
-            .foregroundStyle(isPressing ? .white : .primary)
-            .symbolEffect(.variableColor.iterative, isActive: isPressing)
-            .contentTransition(.symbolEffect(.replace))
-    }
+    // MARK: - Sent Confirmation Bar
 
-    // MARK: - Transcripts
-
-    private var liveTranscript: some View {
-        Text(speech.transcript)
-            .font(.system(.caption, design: .monospaced))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial, in: Capsule())
-            .frame(maxWidth: 240)
-            .lineLimit(2)
-            .padding(.bottom, 76)
-    }
-
-    private var transcriptToast: some View {
-        HStack(spacing: 6) {
+    private var sentBar: some View {
+        HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 16))
                 .foregroundStyle(.green)
-                .font(.caption)
             Text(sentText)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .font(.system(.subheadline, design: .monospaced, weight: .medium))
+                .foregroundStyle(.primary.opacity(0.7))
                 .lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: Capsule())
-        .padding(.bottom, 76)
+        .frame(maxWidth: .infinity)
+        .frame(height: 48)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.06), radius: 3, y: -1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - PTT Gesture
+
+    private var pttGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in
+                if !isRecording {
+                    startRecording()
+                }
+            }
+            .onEnded { _ in
+                if isRecording {
+                    finishRecording()
+                }
+            }
     }
 
     // MARK: - Actions
 
     private func startRecording() {
-        isPressing = true
-        speech.startListening()
-        withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-            pulsePhase = 1
+        // Dismiss keyboard if it's up
+        if inputMode == .keyboard {
+            withAnimation(.easeInOut(duration: 0.1)) {
+                inputMode = .voice
+            }
         }
+        isRecording = true
+        speech.startListening()
+        startWaveformSampling()
     }
 
     private func finishRecording() {
         let text = speech.stopListening()
-        isPressing = false
-        pulsePhase = 0
+        isRecording = false
+        stopWaveformSampling()
 
         guard !text.isEmpty else { return }
 
         sentText = text
         onText(text)
 
-        showTranscript = true
+        showSentConfirmation = true
         Task {
             try? await Task.sleep(for: .seconds(1.5))
-            showTranscript = false
+            showSentConfirmation = false
         }
+    }
+
+    private func startWaveformSampling() {
+        waveformTimer = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { _ in
+            Task { @MainActor in
+                var newSamples = Array(waveformSamples.dropFirst())
+                let level = CGFloat(speech.audioLevel)
+                let sample = min(1.0, level * 1.8 + CGFloat.random(in: 0...0.08))
+                newSamples.append(sample)
+                waveformSamples = newSamples
+            }
+        }
+    }
+
+    private func stopWaveformSampling() {
+        waveformTimer?.invalidate()
+        waveformTimer = nil
+        waveformSamples = Array(repeating: 0, count: 28)
     }
 }
 

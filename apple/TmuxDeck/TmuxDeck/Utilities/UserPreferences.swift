@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct TerminalTheme: Identifiable, Equatable {
     let id: String
@@ -68,6 +69,10 @@ final class UserPreferences {
         didSet { UserDefaults.standard.set(biometricsEnabled, forKey: "tmuxdeck_biometricsEnabled") }
     }
 
+    var preferAppMode: Bool {
+        didSet { UserDefaults.standard.set(preferAppMode, forKey: "tmuxdeck_preferAppMode") }
+    }
+
     var currentTheme: TerminalTheme {
         TerminalTheme.named(themeName)
     }
@@ -78,5 +83,10 @@ final class UserPreferences {
         self.fontSize = savedFontSize > 0 ? CGFloat(savedFontSize) : 14
         self.themeName = defaults.string(forKey: "tmuxdeck_themeName") ?? "dark"
         self.biometricsEnabled = defaults.bool(forKey: "tmuxdeck_biometricsEnabled")
+        if defaults.object(forKey: "tmuxdeck_preferAppMode") != nil {
+            self.preferAppMode = defaults.bool(forKey: "tmuxdeck_preferAppMode")
+        } else {
+            self.preferAppMode = UIDevice.current.userInterfaceIdiom == .phone
+        }
     }
 }

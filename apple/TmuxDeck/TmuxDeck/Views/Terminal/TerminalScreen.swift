@@ -9,6 +9,8 @@ struct TerminalScreen: View {
 
     @State private var viewModel: TerminalViewModel?
     @State private var hideTabBar = false
+    @State private var inputMode: InputMode = .voice
+    @State private var showQuickActions = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,20 +29,11 @@ struct TerminalScreen: View {
                 }
 
                 ZStack {
-                    SwiftTerminalView(viewModel: vm)
+                    SwiftTerminalView(viewModel: vm, keyboardActive: inputMode == .keyboard, showQuickActions: $showQuickActions)
+                        .padding(.bottom, 60)
                         .onDisappear {
                             vm.disconnect()
                         }
-                        .gesture(
-                            MagnificationGesture()
-                                .onChanged { scale in
-                                    if scale > 1.05 {
-                                        vm.adjustFontSize(delta: 0.5)
-                                    } else if scale < 0.95 {
-                                        vm.adjustFontSize(delta: -0.5)
-                                    }
-                                }
-                        )
 
                     // Floating restore button when fullscreen
                     if isFullscreen {
@@ -67,16 +60,34 @@ struct TerminalScreen: View {
                         .transition(.opacity)
                     }
 
-                    // Floating voice input button
-                    VStack {
-                        Spacer()
-                        HStack {
+                    // Floating input control (voice/keyboard toggle)
+                    TerminalInputControl(
+                        onText: { text in
+                            vm.sendInput(Data((text + "\n").utf8))
+                        },
+                        onRawInput: { data in
+                            vm.sendInput(data)
+                        },
+                        inputMode: $inputMode
+                    )
+
+                    // Pane indicator dots (app mode with multiple panes)
+                    if vm.mode == .app && vm.panes.count > 1 {
+                        VStack {
                             Spacer()
-                            VoiceInputButton { text in
-                                vm.sendInput(Data((text + "\n").utf8))
-                            }
-                            .padding(.trailing, 16)
-                            .padding(.bottom, 100)
+                            PaneIndicator(
+                                paneCount: vm.panes.count,
+                                activeIndex: vm.panes.firstIndex(where: { $0.index == vm.activePaneIndex }) ?? 0,
+                                onSelect: { position in
+                                    guard position >= 0, position < vm.panes.count else { return }
+                                    let targetPane = vm.panes[position]
+                                    vm.activePaneIndex = targetPane.index
+                                    vm.isZoomed = true
+                                    vm.connection.zoomPane(windowIndex: vm.activeWindowIndex, paneIndex: targetPane.index)
+                                    vm.connection.capturePane(windowIndex: vm.activeWindowIndex, paneIndex: targetPane.index)
+                                }
+                            )
+                            .padding(.bottom, 8)
                         }
                     }
                 }
@@ -130,6 +141,15 @@ struct TerminalScreen: View {
 
                         Menu {
                             Button {
+                                viewModel?.toggleMode()
+                            } label: {
+                                Label(
+                                    viewModel?.mode == .app ? "Tmux Mode" : "App Mode",
+                                    systemImage: viewModel?.mode == .app ? "rectangle.split.3x1" : "rectangle.fill"
+                                )
+                            }
+
+                            Button {
                                 hideTabBar.toggle()
                             } label: {
                                 Label(
@@ -173,6 +193,26 @@ struct TerminalScreen: View {
             }
         }
         .statusBarHidden(isFullscreen)
+        .sheet(isPresented: $showQuickActions) {
+            if let vm = viewModel {
+                QuickActionsSheet { data in
+                    vm.sendInput(data)
+                }
+                .presentationDetents([.medium, .large])
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchWindow)) { notif in
+            guard let index = notif.userInfo?["index"] as? Int,
+                  let vm = viewModel else { return }
+            // Find the window with this tmux index
+            if vm.windows.contains(where: { $0.index == index }) {
+                vm.switchWindow(to: index)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .newSession)) { _ in
+            guard let vm = viewModel else { return }
+            Task { await vm.createWindow() }
+        }
         .onAppear {
             if viewModel == nil {
                 viewModel = TerminalViewModel(
