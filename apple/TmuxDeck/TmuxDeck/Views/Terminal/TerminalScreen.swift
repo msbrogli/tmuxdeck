@@ -9,7 +9,7 @@ struct TerminalScreen: View {
 
     @State private var viewModel: TerminalViewModel?
     @State private var hideTabBar = false
-    @State private var inputMode: InputMode = .voice
+    @State private var inputMode: InputMode = UIDevice.current.userInterfaceIdiom == .pad ? .keyboard : .voice
     @State private var showQuickActions = false
 
     var body: some View {
