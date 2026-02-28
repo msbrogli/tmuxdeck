@@ -62,6 +62,27 @@ async def _set_tmux_passthrough(tmux_prefix: list[str]) -> None:
         pass
 
 
+async def _set_tmux_monitor_activity(tmux_prefix: list[str]) -> None:
+    """Enable activity monitoring so #{window_activity_flag} works."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *tmux_prefix, "set-option", "-g", "monitor-activity", "on",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.wait()
+        # Set activity-action to none so tmux sets the window flag
+        # without generating any alert (no bell, no status message).
+        proc = await asyncio.create_subprocess_exec(
+            *tmux_prefix, "set-option", "-g", "activity-action", "none",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.wait()
+    except OSError:
+        pass
+
+
 async def _get_tmux_option(tmux_prefix: list[str], option: str) -> str:
     """Read a global tmux option value. Returns empty string on error."""
     try:
@@ -313,6 +334,8 @@ async def terminal_ws(
             await _set_tmux_extended_keys(tmux_prefix)
             # Enable DCS passthrough for tmuxdeck-open
             await _set_tmux_passthrough(tmux_prefix)
+            # Enable activity monitoring for sidebar indicators
+            await _set_tmux_monitor_activity(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Local",
                                 tmux_prefix=tmux_prefix, session_name=session_name)
@@ -333,6 +356,8 @@ async def terminal_ws(
             await _set_tmux_extended_keys(tmux_prefix)
             # Enable DCS passthrough for tmuxdeck-open
             await _set_tmux_passthrough(tmux_prefix)
+            # Enable activity monitoring for sidebar indicators
+            await _set_tmux_monitor_activity(tmux_prefix)
             cmd = [*tmux_prefix, "attach-session", "-t", target]
             await _pty_terminal(websocket, cmd, label="Host",
                                 tmux_prefix=tmux_prefix, session_name=session_name)
@@ -355,6 +380,11 @@ async def terminal_ws(
 
         # Enable DCS passthrough for tmuxdeck-open OSC sequences
         await dm.exec_command(container_id, ["tmux", "set-option", "-g", "allow-passthrough", "on"])
+
+        # Enable activity monitoring for sidebar indicators
+        await dm.exec_command(container_id, ["tmux", "set-option", "-g", "monitor-activity", "on"])
+        # No alert (no bell, no status message) — just set the window flag.
+        await dm.exec_command(container_id, ["tmux", "set-option", "-g", "activity-action", "none"])
 
         # Start interactive docker exec: tmux attach
         cmd = ["tmux", "attach-session", "-t", target]

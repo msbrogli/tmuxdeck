@@ -173,6 +173,16 @@ class TmuxManager:
             container_id,
             ["tmux", "set-option", "-g", "allow-passthrough", "on"],
         )
+        # Enable activity monitoring so sidebar indicators work.
+        await self._run_cmd(
+            container_id,
+            ["tmux", "set-option", "-g", "monitor-activity", "on"],
+        )
+        # No alert (no bell, no status message) — just set the window flag.
+        await self._run_cmd(
+            container_id,
+            ["tmux", "set-option", "-g", "activity-action", "none"],
+        )
         # Return the new session info
         return {
             "id": make_session_id(container_id, session_name),
@@ -316,6 +326,16 @@ class TmuxManager:
                 await self._run_cmd(
                     container_id,
                     ["tmux", "set-option", "-g", "allow-passthrough", "on"],
+                )
+                # Enable activity monitoring so sidebar indicators work.
+                await self._run_cmd(
+                    container_id,
+                    ["tmux", "set-option", "-g", "monitor-activity", "on"],
+                )
+                # No alert (no bell, no status message) — just set the window flag.
+                await self._run_cmd(
+                    container_id,
+                    ["tmux", "set-option", "-g", "activity-action", "none"],
                 )
                 return
         await self.create_session(container_id, session_name)

@@ -387,6 +387,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       allowProposedApi: true,
     });
 
+    // Suppress audible bell — swallow the event so the browser stays silent.
+    term.onBell(() => { /* noop */ });
+
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
     term.loadAddon(fitAddon);
