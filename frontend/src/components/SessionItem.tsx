@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Terminal as TerminalIcon, ChevronRight, ChevronDown, X, AppWindow, Bell, Circle, Plus, Info, Copy, Check, CircleOff } from 'lucide-react';
 import type { TmuxSession, TmuxWindow, SessionTarget, Selection } from '../types';
-import { isFoldedSelection } from '../types';
+import { isFoldedSelection, isWindowSelection } from '../types';
 import { api } from '../api/client';
 import { ConfirmDialog } from './ConfirmDialog';
 import { getSessionExpanded, saveSessionExpanded } from '../utils/sidebarState';
@@ -294,10 +294,10 @@ export function SessionItem({
       if (data.windowIndex !== targetIndex) {
         await api.swapWindows(containerId, session.id, data.windowIndex, targetIndex);
         // Keep the selected window selected at its new position
-        if (hasAnyWindowSelected) {
-          if (selectedSession?.windowIndex === data.windowIndex) {
+        if (hasAnyWindowSelected && selectedSession && isWindowSelection(selectedSession)) {
+          if (selectedSession.windowIndex === data.windowIndex) {
             onSelectWindow(targetIndex);
-          } else if (selectedSession?.windowIndex === targetIndex) {
+          } else if (selectedSession.windowIndex === targetIndex) {
             onSelectWindow(data.windowIndex);
           }
         }
@@ -407,7 +407,7 @@ export function SessionItem({
 
   const hasAnyWindowSelected =
     selectedSession != null &&
-    !isFoldedSelection(selectedSession) &&
+    isWindowSelection(selectedSession) &&
     selectedSession.containerId === containerId &&
     selectedSession.sessionName === session.name;
 
@@ -503,7 +503,8 @@ export function SessionItem({
           {session.windows.map((win, position) => {
             const isSelected =
               hasAnyWindowSelected &&
-              selectedSession?.windowIndex === win.index;
+              selectedSession != null && isWindowSelection(selectedSession) &&
+              selectedSession.windowIndex === win.index;
 
             const isPreviewed =
               hasAnyWindowPreviewed &&

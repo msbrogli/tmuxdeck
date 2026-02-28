@@ -148,7 +148,6 @@ struct AdaptiveContainerView: View {
                     ),
                     session: target.session,
                     isFullscreen: $isFullscreen,
-                    terminalPool: appState.terminalPool
                 )
                 .id(target.id)
             } else {

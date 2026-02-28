@@ -258,6 +258,7 @@ export const mockApi: ApiClient = {
 
   async listBridges() { return []; },
   async createBridge(_name: string) { throw new Error('Not implemented in mock'); },
+  async updateBridge(_id: string, _data: { enabled?: boolean }) { throw new Error('Not implemented in mock'); },
   async deleteBridge(_id: string) {},
   async getDebugLog() { return { entries: [] }; },
   async clearDebugLog() {},

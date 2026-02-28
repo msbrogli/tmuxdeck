@@ -52,6 +52,7 @@ export interface ApiClient {
   // Bridges
   listBridges(): Promise<BridgeConfig[]>;
   createBridge(name: string): Promise<BridgeConfig>;
+  updateBridge(id: string, data: { enabled?: boolean }): Promise<BridgeConfig>;
   deleteBridge(id: string): Promise<void>;
 
   // Debug log
