@@ -80,6 +80,8 @@ tmuxdeck-bridge --url ws://... --token ... \
   --host-tmux-socket /tmp/tmux-1000/default
 ```
 
+> **Note:** Host socket mode requires the tmux socket to be directly accessible. When running the bridge inside **Docker Desktop** (macOS/Windows), Unix domain sockets mounted from the host are not connectable because the container runs inside a Linux VM. The bridge detects this at startup and disables the host source automatically. To use host tmux sockets on Docker Desktop, run the bridge natively instead of in a container.
+
 ### Docker Containers
 
 Discovers tmux sessions inside Docker containers:

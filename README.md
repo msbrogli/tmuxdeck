@@ -441,6 +441,8 @@ services:
     restart: unless-stopped
 ```
 
+> **Docker Desktop note (macOS/Windows):** The `--host-tmux-socket` option requires direct Unix socket access and does not work inside Docker Desktop containers, where sockets are separated by a VM boundary. The bridge detects this and disables the host source automatically. Run the bridge natively (`uv run tmuxdeck-bridge ...`) to manage host tmux sessions on Docker Desktop. Docker socket discovery (`--docker-socket`) works normally.
+
 ### CLI flags and environment variables
 
 | Flag | Env Var | Default | Description |

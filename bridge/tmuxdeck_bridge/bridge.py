@@ -29,6 +29,7 @@ class Bridge:
         self._ws: websockets.ClientConnection | None = None
         self._terminals: dict[int, TerminalSession] = {}  # channel_id → session
         self._running = False
+        self._host_socket_broken = False
         # Session source lookup caches (rebuilt on each _collect_sessions)
         self._name_to_source: dict[str, str] = {}  # session_name → source
         self._id_to_source: dict[str, str] = {}  # session_id → source
@@ -43,9 +44,22 @@ class Bridge:
         sources = []
         if self.config.local:
             sources.append("local")
-        if self.config.host_tmux_socket:
+        if self.config.host_tmux_socket and not self._host_socket_broken:
             sources.append("host")
         return sources
+
+    def _test_socket_connectable(self, path: str) -> bool:
+        """Try to connect to a Unix domain socket. Returns True if connectable."""
+        import socket as _socket
+
+        try:
+            sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+            sock.settimeout(2)
+            sock.connect(path)
+            sock.close()
+            return True
+        except (OSError, _socket.error):
+            return False
 
     def _log_startup_info(self) -> None:
         """Log configured sources and scan for tmux sockets."""
@@ -73,6 +87,18 @@ class Bridge:
                 exists = True
             if exists:
                 logger.info("Host tmux socket EXISTS: %s", sock_path)
+                if self._test_socket_connectable(str(sock_path)):
+                    logger.info("Host tmux socket CONNECTABLE: %s", sock_path)
+                else:
+                    logger.warning(
+                        "Host tmux socket EXISTS but NOT CONNECTABLE: %s — "
+                        "this typically happens on Docker Desktop (macOS/Windows) where "
+                        "Unix domain sockets cannot cross the VM boundary. "
+                        "The host source will be disabled. "
+                        "Run the bridge natively to use host tmux sockets.",
+                        sock_path,
+                    )
+                    self._host_socket_broken = True
             else:
                 logger.warning("Host tmux socket NOT FOUND: %s", sock_path)
                 # Check parent directory
@@ -461,7 +487,7 @@ class Bridge:
             logger.info("Local: %d sessions", len(local))
 
         # Host tmux socket sessions
-        if self.config.host_tmux_socket:
+        if self.config.host_tmux_socket and not self._host_socket_broken:
             host = await self._list_tmux_sessions(
                 ["-S", self.config.host_tmux_socket],
                 source="host",
