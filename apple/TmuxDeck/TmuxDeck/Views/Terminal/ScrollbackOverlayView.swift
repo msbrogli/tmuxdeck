@@ -55,31 +55,48 @@ struct ScrollbackTextView: UIViewRepresentable {
     let textColor: UIColor
     let backgroundColor: UIColor
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.isEditable = false
         textView.isSelectable = true
+        textView.isUserInteractionEnabled = true
         textView.backgroundColor = backgroundColor
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 6, bottom: 8, right: 6)
         textView.indicatorStyle = .white
         textView.alwaysBounceVertical = true
-        // Don't wrap — let lines extend and scroll horizontally if needed,
-        // matching real terminal behavior
         textView.isScrollEnabled = true
         textView.textContainer.lineBreakMode = .byCharWrapping
         textView.textContainer.lineFragmentPadding = 2
-        textView.attributedText = parseAnsi(text, font: font, defaultColor: textColor)
-        // Scroll to bottom
-        let bottom = NSRange(location: textView.attributedText.length, length: 0)
-        textView.scrollRangeToVisible(bottom)
+        textView.dataDetectorTypes = []
+        let attributed = parseAnsi(text, font: font, defaultColor: textColor)
+        textView.attributedText = attributed
+        context.coordinator.lastText = text
+        // Scroll to bottom after layout
+        DispatchQueue.main.async {
+            let bottom = NSRange(location: attributed.length, length: 0)
+            textView.scrollRangeToVisible(bottom)
+        }
         return textView
     }
 
+    class Coordinator {
+        var lastText: String = ""
+    }
+
     func updateUIView(_ uiView: UITextView, context: Context) {
-        uiView.attributedText = parseAnsi(text, font: font, defaultColor: textColor)
-        uiView.backgroundColor = backgroundColor
-        let bottom = NSRange(location: uiView.attributedText.length, length: 0)
-        uiView.scrollRangeToVisible(bottom)
+        // Only update if text actually changed — re-setting attributedText
+        // cancels any active text selection the user is making.
+        if context.coordinator.lastText != text {
+            context.coordinator.lastText = text
+            uiView.attributedText = parseAnsi(text, font: font, defaultColor: textColor)
+            uiView.backgroundColor = backgroundColor
+            let bottom = NSRange(location: uiView.attributedText.length, length: 0)
+            uiView.scrollRangeToVisible(bottom)
+        }
     }
 }
 
