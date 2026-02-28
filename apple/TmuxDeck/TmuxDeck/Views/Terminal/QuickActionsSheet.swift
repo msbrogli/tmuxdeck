@@ -58,6 +58,8 @@ struct QuickActionsSheet: View {
                                   data: [0x02, 0x22])
                         actionRow("Split Vertical", subtitle: "Prefix + %", icon: "rectangle.split.2x1", color: .indigo,
                                   data: [0x02, 0x25])
+                        actionRow("Kill Pane", subtitle: "Prefix + x", icon: "xmark.rectangle", color: .red,
+                                  data: [0x02, 0x78])
                     }
                 }
                 .padding()
@@ -89,7 +91,6 @@ struct QuickActionsSheet: View {
     private func actionRow(_ title: String, subtitle: String, icon: String, color: Color, data: [UInt8]) -> some View {
         Button {
             onAction(Data(data))
-            dismiss()
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: icon)

@@ -74,6 +74,12 @@ struct TerminalScreen: View {
                         onToggleZoom: {
                             vm.connection.toggleZoom()
                         },
+                        onSplitPane: { direction in
+                            vm.connection.splitPane(direction: direction)
+                        },
+                        onKillPane: {
+                            vm.connection.killPane()
+                        },
                         inputMode: $inputMode
                     )
 

@@ -9,6 +9,8 @@ struct TerminalInputControl: View {
     let onRawInput: (Data) -> Void
     let onSelectPane: (String) -> Void
     let onToggleZoom: () -> Void
+    let onSplitPane: (String) -> Void
+    let onKillPane: () -> Void
     @Binding var inputMode: InputMode
 
     @State private var speech = SpeechRecognitionService()
@@ -17,11 +19,45 @@ struct TerminalInputControl: View {
     @State private var showSentConfirmation = false
     @State private var sentText = ""
     @State private var showLanguagePicker = false
+    @State private var showTmuxMenu = false
     @State private var waveformSamples: [CGFloat] = Array(repeating: 0, count: 28)
     @State private var waveformTimer: Timer?
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
+            // Tap-outside-to-dismiss background
+            if showTmuxMenu {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { showTmuxMenu = false }
+            }
+
+            VStack(spacing: 0) {
+            // Sent text balloon at top — grows downward
+            if showSentConfirmation {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.green)
+                        .padding(.top, 2)
+                    Text(sentText)
+                        .font(.system(.subheadline, design: .monospaced, weight: .medium))
+                        .foregroundStyle(.primary.opacity(0.8))
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             Spacer()
 
             // Transcript bubble above bar (only while recording)
@@ -43,16 +79,30 @@ struct TerminalInputControl: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            // Tmux actions floating menu
+            if showTmuxMenu {
+                TmuxActionsMenu(
+                    onSelectPane: onSelectPane,
+                    onToggleZoom: onToggleZoom,
+                    onSplitPane: onSplitPane,
+                    onKillPane: onKillPane,
+                    onDismiss: { showTmuxMenu = false }
+                )
+                .padding(.horizontal, 10)
+                .padding(.bottom, 6)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             if showSentConfirmation {
-                sentBar
-                    .transition(.opacity)
+                mainBar.opacity(0.5)
             } else {
-                // Single persistent bar — appearance changes, view stays
                 mainBar
             }
-        }
+        } // VStack
+        } // ZStack
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isRecording)
         .animation(.easeOut(duration: 0.2), value: showSentConfirmation)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: showTmuxMenu)
         .sheet(isPresented: $showLanguagePicker) {
             LanguagePickerSheet(
                 currentLocale: speech.locale,
@@ -100,27 +150,12 @@ struct TerminalInputControl: View {
                 }
 
                 // Tmux navigation menu
-                Menu {
-                    Button { onSelectPane("U") } label: {
-                        Label("Navigate Up", systemImage: "arrow.up")
-                    }
-                    Button { onSelectPane("D") } label: {
-                        Label("Navigate Down", systemImage: "arrow.down")
-                    }
-                    Button { onSelectPane("L") } label: {
-                        Label("Navigate Left", systemImage: "arrow.left")
-                    }
-                    Button { onSelectPane("R") } label: {
-                        Label("Navigate Right", systemImage: "arrow.right")
-                    }
-                    Divider()
-                    Button { onToggleZoom() } label: {
-                        Label("Fullscreen Pane", systemImage: "arrow.up.left.and.arrow.down.right")
-                    }
+                Button {
+                    showTmuxMenu.toggle()
                 } label: {
                     Image(systemName: "rectangle.split.3x3")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.primary.opacity(0.5))
+                        .foregroundStyle(.primary.opacity(showTmuxMenu ? 1 : 0.5))
                         .frame(width: 36, height: 48)
                 }
 
@@ -182,29 +217,6 @@ struct TerminalInputControl: View {
         .gesture(pttGesture)
         .sensoryFeedback(.impact(weight: .medium), trigger: isRecording)
         .opacity(hasPermission == false && !isRecording ? 0.3 : 1)
-    }
-
-    // MARK: - Sent Confirmation Bar
-
-    private var sentBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 16))
-                .foregroundStyle(.green)
-            Text(sentText)
-                .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                .foregroundStyle(.primary.opacity(0.7))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.06), radius: 3, y: -1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.bottom, 6)
     }
 
     // MARK: - PTT Gesture
@@ -319,5 +331,65 @@ struct LanguagePickerSheet: View {
 
     private func displayName(for locale: Locale) -> String {
         Locale.current.localizedString(forIdentifier: locale.identifier) ?? locale.identifier
+    }
+}
+
+// MARK: - Tmux Actions Menu
+
+struct TmuxActionsMenu: View {
+    let onSelectPane: (String) -> Void
+    let onToggleZoom: () -> Void
+    let onSplitPane: (String) -> Void
+    let onKillPane: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 2) {
+            // Navigation
+            HStack(spacing: 2) {
+                tmuxButton("arrow.left", label: "Left") { onSelectPane("L") }
+                tmuxButton("arrow.up", label: "Up") { onSelectPane("U") }
+                tmuxButton("arrow.down", label: "Down") { onSelectPane("D") }
+                tmuxButton("arrow.right", label: "Right") { onSelectPane("R") }
+            }
+
+            HStack(spacing: 2) {
+                tmuxButton("rectangle.split.1x2", label: "Split H") {
+                    onSplitPane("H")
+                }
+                tmuxButton("rectangle.split.2x1", label: "Split V") {
+                    onSplitPane("V")
+                }
+                tmuxButton("arrow.up.left.and.arrow.down.right", label: "Zoom") {
+                    onToggleZoom()
+                }
+                tmuxButton("xmark.rectangle", label: "Kill", tint: .red) {
+                    onKillPane()
+                }
+            }
+        }
+        .padding(6)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
+        }
+    }
+
+    private func tmuxButton(_ icon: String, label: String, tint: Color = .primary, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(tint.opacity(0.8))
+                Text(label)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }

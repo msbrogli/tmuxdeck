@@ -116,6 +116,14 @@ final class TerminalConnection {
         sendText("TOGGLE_ZOOM:")
     }
 
+    func splitPane(direction: String) {
+        sendText("SPLIT_PANE:\(direction)")
+    }
+
+    func killPane() {
+        sendText("KILL_PANE:")
+    }
+
     func disableMouse() {
         sendText("DISABLE_MOUSE:")
     }
