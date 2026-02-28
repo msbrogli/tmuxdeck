@@ -68,28 +68,15 @@ struct TerminalScreen: View {
                         onRawInput: { data in
                             vm.sendInput(data)
                         },
+                        onSelectPane: { direction in
+                            vm.connection.selectPane(direction: direction)
+                        },
+                        onToggleZoom: {
+                            vm.connection.toggleZoom()
+                        },
                         inputMode: $inputMode
                     )
 
-                    // Pane indicator dots (app mode with multiple panes)
-                    if vm.mode == .app && vm.panes.count > 1 {
-                        VStack {
-                            Spacer()
-                            PaneIndicator(
-                                paneCount: vm.panes.count,
-                                activeIndex: vm.panes.firstIndex(where: { $0.index == vm.activePaneIndex }) ?? 0,
-                                onSelect: { position in
-                                    guard position >= 0, position < vm.panes.count else { return }
-                                    let targetPane = vm.panes[position]
-                                    vm.activePaneIndex = targetPane.index
-                                    vm.isZoomed = true
-                                    vm.connection.zoomPane(windowIndex: vm.activeWindowIndex, paneIndex: targetPane.index)
-                                    vm.connection.capturePane(windowIndex: vm.activeWindowIndex, paneIndex: targetPane.index)
-                                }
-                            )
-                            .padding(.bottom, 8)
-                        }
-                    }
                 }
 
                 if let error = vm.error {

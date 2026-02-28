@@ -201,6 +201,36 @@ async def _pty_terminal(
                         except (ValueError, OSError) as e:
                             logger.debug("%s select-window failed: %s", label, e)
                         continue
+                    if text.startswith("SELECT_PANE:") and tmux_prefix and session_name:
+                        try:
+                            direction = text.split(":", 1)[1].strip()
+                            flag_map = {"U": "-U", "D": "-D", "L": "-L", "R": "-R"}
+                            flag = flag_map.get(direction)
+                            if flag:
+                                sp = await asyncio.create_subprocess_exec(
+                                    *tmux_prefix, "select-pane", flag,
+                                    "-t", session_name,
+                                    stdout=asyncio.subprocess.DEVNULL,
+                                    stderr=asyncio.subprocess.DEVNULL,
+                                    env=_clean_env(),
+                                )
+                                await sp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s select-pane failed: %s", label, e)
+                        continue
+                    if text.startswith("TOGGLE_ZOOM:") and tmux_prefix and session_name:
+                        try:
+                            zp = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "resize-pane", "-Z",
+                                "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await zp.wait()
+                        except (ValueError, OSError) as e:
+                            logger.debug("%s toggle-zoom failed: %s", label, e)
+                        continue
                     if text.startswith("SCROLL:") and tmux_prefix and session_name:
                         try:
                             parts = text.split(":")
@@ -784,6 +814,30 @@ async def terminal_ws(
                                 )
                             except (ValueError, Exception) as e:
                                 logger.debug("select-window failed: %s", e)
+                            continue
+                        if text.startswith("SELECT_PANE:"):
+                            try:
+                                direction = text.split(":", 1)[1].strip()
+                                flag_map = {"U": "-U", "D": "-D", "L": "-L", "R": "-R"}
+                                flag = flag_map.get(direction)
+                                if flag:
+                                    await dm.exec_command(
+                                        container_id,
+                                        ["tmux", "select-pane", flag,
+                                         "-t", session_name],
+                                    )
+                            except (ValueError, Exception) as e:
+                                logger.debug("select-pane failed: %s", e)
+                            continue
+                        if text.startswith("TOGGLE_ZOOM:"):
+                            try:
+                                await dm.exec_command(
+                                    container_id,
+                                    ["tmux", "resize-pane", "-Z",
+                                     "-t", session_name],
+                                )
+                            except (ValueError, Exception) as e:
+                                logger.debug("toggle-zoom failed: %s", e)
                             continue
                         # Handle scroll control messages
                         if text.startswith("SCROLL:"):
