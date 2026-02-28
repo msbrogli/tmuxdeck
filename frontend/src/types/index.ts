@@ -14,14 +14,23 @@ export interface FoldedSessionTarget {
   folded: true;
 }
 
-export type Selection = SessionTarget | FoldedSessionTarget;
+export interface FoldedContainerTarget {
+  containerId: string;
+  containerFolded: true;
+}
+
+export type Selection = SessionTarget | FoldedSessionTarget | FoldedContainerTarget;
 
 export function isWindowSelection(s: Selection): s is SessionTarget {
-  return !('folded' in s);
+  return !('folded' in s) && !('containerFolded' in s);
 }
 
 export function isFoldedSelection(s: Selection): s is FoldedSessionTarget {
   return 'folded' in s && s.folded === true;
+}
+
+export function isFoldedContainerSelection(s: Selection): s is FoldedContainerTarget {
+  return 'containerFolded' in s && s.containerFolded === true;
 }
 
 export interface TmuxWindow {

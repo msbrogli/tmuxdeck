@@ -26,9 +26,11 @@ interface SidebarProps {
   assignDigit?: (digit: string, target: SessionTarget) => void;
   isSessionExpanded?: (containerId: string, sessionId: string) => boolean;
   setSessionExpanded?: (containerId: string, sessionId: string, expanded: boolean) => void;
+  isContainerExpanded?: (containerId: string) => boolean;
+  setContainerExpanded?: (containerId: string, expanded: boolean) => void;
 }
 
-export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewSession, onSelectSession, onPreviewSession, onPreviewEnd, digitByTargetKey, assignDigit, isSessionExpanded, setSessionExpanded }: SidebarProps) {
+export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewSession, onSelectSession, onPreviewSession, onPreviewEnd, digitByTargetKey, assignDigit, isSessionExpanded, setSessionExpanded, isContainerExpanded, setContainerExpanded }: SidebarProps) {
   const [collapsed, setCollapsedRaw] = useState(() => initialCollapsed ?? getSidebarCollapsed());
   const setCollapsed = (v: boolean) => { setCollapsedRaw(v); saveSidebarCollapsed(v); };
   const [showNewContainer, setShowNewContainer] = useState(false);
@@ -155,6 +157,8 @@ export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewS
                 assignDigit={assignDigit}
                 isSessionExpanded={isSessionExpanded}
                 setSessionExpanded={setSessionExpanded}
+                isContainerExpanded={isContainerExpanded}
+                setContainerExpanded={setContainerExpanded}
                 sectionCollapsed={sectionsCollapsed[sectionKey]}
                 onToggleSection={() => setSectionsCollapsed((s) => ({ ...s, [sectionKey]: !s[sectionKey] }))}
               />
@@ -177,6 +181,8 @@ export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewS
               assignDigit={assignDigit}
               isSessionExpanded={isSessionExpanded}
               setSessionExpanded={setSessionExpanded}
+              isContainerExpanded={isContainerExpanded}
+              setContainerExpanded={setContainerExpanded}
             />
           ))}
           {stopped.length > 0 && running.length > 0 && (
@@ -196,6 +202,8 @@ export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewS
               assignDigit={assignDigit}
               isSessionExpanded={isSessionExpanded}
               setSessionExpanded={setSessionExpanded}
+              isContainerExpanded={isContainerExpanded}
+              setContainerExpanded={setContainerExpanded}
             />
           ))}
           {containers.length === 0 && (

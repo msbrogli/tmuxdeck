@@ -12,13 +12,14 @@ import { useToast } from '../components/ToastContainer';
 import { useTerminalPool } from '../hooks/useTerminalPool';
 import { useWindowShortcuts } from '../hooks/useWindowShortcuts';
 import { useSessionExpandedState } from '../hooks/useSessionExpandedState';
+import { useContainerExpandedState } from '../hooks/useContainerExpandedState';
 import { api } from '../api/client';
 import { logout } from '../api/httpClient';
-import type { SessionTarget, Selection, FoldedSessionTarget, Container, ContainerListResponse, Settings, ClaudeNotification } from '../types';
-import { isWindowSelection, isFoldedSelection } from '../types';
+import type { SessionTarget, Selection, FoldedSessionTarget, FoldedContainerTarget, Container, ContainerListResponse, Settings, ClaudeNotification } from '../types';
+import { isWindowSelection, isFoldedSelection, isFoldedContainerSelection } from '../types';
 import { sortSessionsByOrder } from '../utils/sessionOrder';
-import { getContainerExpanded } from '../utils/sidebarState';
 import { DEFAULT_HOTKEYS, matchesBinding, matchesDoublePressKey } from '../utils/hotkeys';
+import { FoldedContainerPreview } from '../components/FoldedContainerPreview';
 
 function getInitialSession(): SessionTarget | null {
   try {
@@ -36,6 +37,7 @@ export function MainPage() {
   const [selectedSession, setSelectedSession] = useState<Selection | null>(getInitialSession);
   const [previewSession, setPreviewSession] = useState<SessionTarget | null>(null);
   const { isSessionExpanded, setSessionExpanded } = useSessionExpandedState();
+  const { isContainerExpanded, setContainerExpanded } = useContainerExpandedState();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -64,11 +66,12 @@ export function MainPage() {
   const displayedSession = previewSession ?? selectedSession;
   const isPreview = previewSession !== null;
   const isFolded = displayedSession !== null && isFoldedSelection(displayedSession);
+  const isFoldedContainer = displayedSession !== null && isFoldedContainerSelection(displayedSession);
 
   // Derive activeKey — must match useTerminalPool's makeKey (container+session only)
-  // When folded, hide all terminals
-  const activeKey = displayedSession && !isFolded
-    ? `${displayedSession.containerId}-${displayedSession.sessionName}`
+  // When folded (session or container), hide all terminals
+  const activeKey = displayedSession && !isFolded && !isFoldedContainer
+    ? `${displayedSession.containerId}-${(displayedSession as SessionTarget).sessionName}`
     : null;
 
   // Keep pool's activeKey ref in sync (for LRU eviction protection)
@@ -159,6 +162,11 @@ export function MainPage() {
   }, [clearPreviewImmediate, pool]);
 
   const selectFoldedSession = useCallback((target: FoldedSessionTarget) => {
+    clearPreviewImmediate();
+    setSelectedSession(target);
+  }, [clearPreviewImmediate]);
+
+  const selectFoldedContainer = useCallback((target: FoldedContainerTarget) => {
     clearPreviewImmediate();
     setSelectedSession(target);
   }, [clearPreviewImmediate]);
@@ -373,38 +381,69 @@ export function MainPage() {
         }
         return;
       }
-      // Fold current session
+      // Fold current session / container
       if (matchesBinding(e, hotkeys.foldSession)) {
         if (selectedSession) {
           e.preventDefault();
-          const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
-          if (containers) {
-            const cId = selectedSession.containerId;
-            const container = containers.find((c) => c.id === cId);
-            if (container) {
-              let session;
-              if (isFoldedSelection(selectedSession)) {
-                session = container.sessions.find((s) => s.id === selectedSession.sessionId);
-              } else {
-                session = container.sessions.find((s) => s.name === selectedSession.sessionName);
-              }
-              if (session && !isFoldedSelection(selectedSession)) {
-                setSessionExpanded(cId, session.id, false);
-                selectFoldedSession({
-                  containerId: cId,
-                  sessionName: session.name,
-                  sessionId: session.id,
-                  folded: true,
-                });
+          if (isFoldedContainerSelection(selectedSession)) {
+            // Already folded container — no-op
+          } else if (isFoldedSelection(selectedSession)) {
+            // Folded session → fold the container
+            setContainerExpanded(selectedSession.containerId, false);
+            selectFoldedContainer({ containerId: selectedSession.containerId, containerFolded: true });
+          } else {
+            // Window selected → fold the session
+            const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
+            if (containers) {
+              const cId = selectedSession.containerId;
+              const container = containers.find((c) => c.id === cId);
+              if (container) {
+                const session = container.sessions.find((s) => s.name === selectedSession.sessionName);
+                if (session) {
+                  setSessionExpanded(cId, session.id, false);
+                  selectFoldedSession({
+                    containerId: cId,
+                    sessionName: session.name,
+                    sessionId: session.id,
+                    folded: true,
+                  });
+                }
               }
             }
           }
         }
         return;
       }
-      // Unfold current session
+      // Unfold current session / container
       if (matchesBinding(e, hotkeys.unfoldSession)) {
-        if (selectedSession && isFoldedSelection(selectedSession)) {
+        if (selectedSession && isFoldedContainerSelection(selectedSession)) {
+          // Folded container → expand it, select first session (respecting its fold state)
+          e.preventDefault();
+          const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
+          if (containers) {
+            const container = containers.find((c) => c.id === selectedSession.containerId);
+            if (container) {
+              setContainerExpanded(selectedSession.containerId, true);
+              const ordered = sortSessionsByOrder(container.sessions, container.id);
+              if (ordered.length > 0) {
+                const firstSession = ordered[0];
+                if (!isSessionExpanded(container.id, firstSession.id)) {
+                  selectFoldedSession({
+                    containerId: container.id,
+                    sessionName: firstSession.name,
+                    sessionId: firstSession.id,
+                    folded: true,
+                  });
+                } else {
+                  const sortedWindows = [...firstSession.windows].sort((a, b) => a.index - b.index);
+                  if (sortedWindows.length > 0) {
+                    selectSession(container.id, firstSession.name, sortedWindows[0].index);
+                  }
+                }
+              }
+            }
+          }
+        } else if (selectedSession && isFoldedSelection(selectedSession)) {
           e.preventDefault();
           const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
           if (containers) {
@@ -421,7 +460,7 @@ export function MainPage() {
         }
         return;
       }
-      // Navigate through windows AND folded sessions
+      // Navigate through windows, folded sessions, AND folded containers
       if (matchesBinding(e, hotkeys.nextItem) || matchesBinding(e, hotkeys.prevItem)) {
         const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
         if (containers && selectedSession) {
@@ -429,7 +468,10 @@ export function MainPage() {
           const allItems: Selection[] = [];
           for (const c of containers) {
             if (c.status !== 'running' && c.containerType !== 'host' && c.containerType !== 'local' && c.containerType !== 'bridge') continue;
-            if ((getContainerExpanded(c.id) ?? true) === false) continue;
+            if (!isContainerExpanded(c.id)) {
+              allItems.push({ containerId: c.id, containerFolded: true });
+              continue;
+            }
             const ordered = sortSessionsByOrder(c.sessions, c.id);
             for (const s of ordered) {
               if (!isSessionExpanded(c.id, s.id)) {
@@ -444,6 +486,9 @@ export function MainPage() {
           }
           if (allItems.length > 0) {
             const curIdx = allItems.findIndex((t) => {
+              if (isFoldedContainerSelection(selectedSession) && isFoldedContainerSelection(t)) {
+                return t.containerId === selectedSession.containerId;
+              }
               if (isFoldedSelection(selectedSession) && isFoldedSelection(t)) {
                 return t.containerId === selectedSession.containerId && t.sessionId === selectedSession.sessionId;
               }
@@ -457,7 +502,9 @@ export function MainPage() {
             const delta = matchesBinding(e, hotkeys.nextItem) ? 1 : -1;
             const nextIdx = curIdx === -1 ? 0 : (curIdx + delta + allItems.length) % allItems.length;
             const next = allItems[nextIdx];
-            if (isFoldedSelection(next)) {
+            if (isFoldedContainerSelection(next)) {
+              selectFoldedContainer(next);
+            } else if (isFoldedSelection(next)) {
               selectFoldedSession(next);
             } else {
               selectSession(next.containerId, next.sessionName, next.windowIndex);
@@ -485,7 +532,7 @@ export function MainPage() {
     };
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-  }, [switcherOpen, helpOpen, clearPreviewImmediate, selectedSession, previewSession, assignDigit, selectSession, selectFoldedSession, setSessionExpanded, isSessionExpanded, queryClient, digitByTargetKey, hotkeys]);
+  }, [switcherOpen, helpOpen, clearPreviewImmediate, selectedSession, previewSession, assignDigit, selectSession, selectFoldedSession, selectFoldedContainer, setSessionExpanded, isSessionExpanded, setContainerExpanded, isContainerExpanded, queryClient, digitByTargetKey, hotkeys]);
 
   return (
     <div className="flex h-full w-full">
@@ -499,17 +546,27 @@ export function MainPage() {
         assignDigit={assignDigit}
         isSessionExpanded={isSessionExpanded}
         setSessionExpanded={setSessionExpanded}
+        isContainerExpanded={isContainerExpanded}
+        setContainerExpanded={setContainerExpanded}
       />
       <div className="flex-1 bg-[#0a0a0a] flex flex-col min-w-0">
         {displayedSession && (() => {
           const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
           const container = containers?.find((c) => c.id === displayedSession.containerId);
+          if (isFoldedContainer) {
+            return (
+              <div className="h-6 flex items-center px-3 text-[11px] text-gray-500 bg-[#0e0e0e] border-b border-gray-800/40 shrink-0 select-none gap-1">
+                <span className="text-gray-400">{container?.displayName ?? displayedSession.containerId}</span>
+                <span className="text-gray-600 ml-1">(folded)</span>
+              </div>
+            );
+          }
           if (isFolded) {
             return (
               <div className="h-6 flex items-center px-3 text-[11px] text-gray-500 bg-[#0e0e0e] border-b border-gray-800/40 shrink-0 select-none gap-1">
                 <span className="text-gray-400">{container?.displayName ?? displayedSession.containerId}</span>
                 <span className="text-gray-700">/</span>
-                <span className="text-gray-400">{displayedSession.sessionName}</span>
+                <span className="text-gray-400">{(displayedSession as FoldedSessionTarget).sessionName}</span>
                 <span className="text-gray-600 ml-1">(folded)</span>
               </div>
             );
@@ -534,6 +591,38 @@ export function MainPage() {
             activeKey={activeKey}
             onOpenFile={(containerId, path) => setViewingFile({ containerId, path })}
           />
+          {isFoldedContainer && isFoldedContainerSelection(displayedSession!) && (
+            <div className="absolute inset-0 z-20">
+              <FoldedContainerPreview
+                selection={displayedSession as FoldedContainerTarget}
+                onUnfoldAndSelect={(sessionIdx) => {
+                  const sel = displayedSession as FoldedContainerTarget;
+                  const containers: Container[] | undefined = queryClient.getQueryData<ContainerListResponse>(['containers'])?.containers;
+                  const container = containers?.find((c) => c.id === sel.containerId);
+                  if (container) {
+                    setContainerExpanded(sel.containerId, true);
+                    const ordered = sortSessionsByOrder(container.sessions, container.id);
+                    const session = ordered[sessionIdx];
+                    if (session) {
+                      if (!isSessionExpanded(container.id, session.id)) {
+                        selectFoldedSession({
+                          containerId: container.id,
+                          sessionName: session.name,
+                          sessionId: session.id,
+                          folded: true,
+                        });
+                      } else {
+                        const sortedWindows = [...session.windows].sort((a, b) => a.index - b.index);
+                        if (sortedWindows.length > 0) {
+                          selectSession(container.id, session.name, sortedWindows[0].index);
+                        }
+                      }
+                    }
+                  }
+                }}
+              />
+            </div>
+          )}
           {isFolded && isFoldedSelection(displayedSession!) && (
             <div className="absolute inset-0 z-20">
               <FoldedSessionPreview
@@ -564,7 +653,7 @@ export function MainPage() {
               Preview
             </div>
           )}
-          {displayedSession && !isFolded && (
+          {displayedSession && !isFolded && !isFoldedContainer && (
             <button
               onClick={() => {
                 poolRef.current?.refitActive();

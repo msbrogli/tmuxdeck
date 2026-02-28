@@ -11,6 +11,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import type { Container, SessionTarget, Selection } from '../types';
+import { isFoldedContainerSelection } from '../types';
 import { DockerIcon } from './icons/DockerIcon';
 import { api } from '../api/client';
 import { SessionItem } from './SessionItem';
@@ -31,6 +32,8 @@ interface ContainerNodeProps {
   assignDigit?: (digit: string, target: SessionTarget) => void;
   isSessionExpanded?: (containerId: string, sessionId: string) => boolean;
   setSessionExpanded?: (containerId: string, sessionId: string, expanded: boolean) => void;
+  isContainerExpanded?: (containerId: string) => boolean;
+  setContainerExpanded?: (containerId: string, expanded: boolean) => void;
   sectionCollapsed?: boolean;
   onToggleSection?: () => void;
 }
@@ -47,6 +50,8 @@ export function ContainerNode({
   assignDigit,
   isSessionExpanded: isSessionExpandedProp,
   setSessionExpanded: setSessionExpandedProp,
+  isContainerExpanded: isContainerExpandedProp,
+  setContainerExpanded: setContainerExpandedProp,
   sectionCollapsed,
   onToggleSection,
 }: ContainerNodeProps) {
@@ -56,11 +61,16 @@ export function ContainerNode({
   const isBridge = ctype === 'bridge';
   const isSpecial = isHost || isLocal || isBridge;
   const isRunning = container.status === 'running';
-  const [expanded, setExpandedRaw] = useState(() => {
+  const [localExpanded, setLocalExpandedRaw] = useState(() => {
     const saved = getContainerExpanded(container.id);
     return saved !== null ? saved : (isRunning || isSpecial);
   });
-  const setExpanded = (v: boolean) => { setExpandedRaw(v); saveContainerExpanded(container.id, v); };
+  const setLocalExpanded = (v: boolean) => { setLocalExpandedRaw(v); saveContainerExpanded(container.id, v); };
+  const expanded = isContainerExpandedProp ? isContainerExpandedProp(container.id) : localExpanded;
+  const setExpanded = setContainerExpandedProp
+    ? (v: boolean) => setContainerExpandedProp(container.id, v)
+    : setLocalExpanded;
+  const isHighlightedFoldedContainer = selectedSession && isFoldedContainerSelection(selectedSession) && selectedSession.containerId === container.id;
   const [showMenu, setShowMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(container.displayName);
@@ -179,7 +189,7 @@ export function ContainerNode({
         />
       )}
 
-      <div className="flex items-center group px-2 py-0.5">
+      <div className={`flex items-center group px-2 py-0.5 ${isHighlightedFoldedContainer ? 'bg-blue-900/40 rounded' : ''}`}>
         {isHost ? (
           <span className="p-0.5 shrink-0 text-blue-400 cursor-pointer" onClick={() => onToggleSection?.()}>
             <Monitor size={14} />
