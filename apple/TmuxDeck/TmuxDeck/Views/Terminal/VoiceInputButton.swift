@@ -11,6 +11,7 @@ struct TerminalInputControl: View {
     let onToggleZoom: () -> Void
     let onSplitPane: (String) -> Void
     let onKillPane: () -> Void
+    let onNewWindow: () -> Void
     @Binding var inputMode: InputMode
 
     @State private var speech = SpeechRecognitionService()
@@ -86,6 +87,7 @@ struct TerminalInputControl: View {
                     onToggleZoom: onToggleZoom,
                     onSplitPane: onSplitPane,
                     onKillPane: onKillPane,
+                    onNewWindow: onNewWindow,
                     onDismiss: { showTmuxMenu = false }
                 )
                 .padding(.horizontal, 10)
@@ -341,6 +343,7 @@ struct TmuxActionsMenu: View {
     let onToggleZoom: () -> Void
     let onSplitPane: (String) -> Void
     let onKillPane: () -> Void
+    let onNewWindow: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
@@ -365,6 +368,12 @@ struct TmuxActionsMenu: View {
                 }
                 tmuxButton("xmark.rectangle", label: "Kill", tint: .red) {
                     onKillPane()
+                }
+            }
+
+            HStack(spacing: 2) {
+                tmuxButton("plus.rectangle", label: "New Win") {
+                    onNewWindow()
                 }
             }
         }

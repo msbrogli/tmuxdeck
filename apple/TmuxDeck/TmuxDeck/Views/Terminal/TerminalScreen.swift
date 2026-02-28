@@ -80,6 +80,9 @@ struct TerminalScreen: View {
                         onKillPane: {
                             vm.connection.killPane()
                         },
+                        onNewWindow: {
+                            Task { await vm.createWindow() }
+                        },
                         inputMode: $inputMode
                     )
 
