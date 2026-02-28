@@ -15,31 +15,40 @@ final class NotificationService {
     func startListening() {
         stopListening()
 
-        guard let baseURL = apiClient?.baseURL else { return }
-        guard let url = URL(string: "/api/v1/notifications/stream", relativeTo: baseURL) else { return }
+        guard let apiClient = apiClient,
+              let baseURL = apiClient.baseURL,
+              let url = URL(string: "/api/v1/notifications/stream", relativeTo: baseURL) else { return }
+
+        // Reuse the APIClient's URLSession so auth cookies are shared
+        let session = apiClient.urlSession
 
         sseTask = Task { [weak self] in
+            var retryCount = 0
+
             while !Task.isCancelled {
                 do {
                     var request = URLRequest(url: url)
                     request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                     request.timeoutInterval = .infinity
 
-                    let config = URLSessionConfiguration.default
-                    config.httpCookieAcceptPolicy = .always
-                    config.httpShouldSetCookies = true
-                    config.httpCookieStorage = .shared
-                    config.timeoutIntervalForRequest = .infinity
-                    config.timeoutIntervalForResource = .infinity
-                    let session = URLSession(configuration: config)
-
                     let (bytes, response) = try await session.bytes(for: request)
 
                     guard let httpResponse = response as? HTTPURLResponse,
                           httpResponse.statusCode == 200 else {
-                        try await Task.sleep(for: .seconds(5))
+                        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        if statusCode == 401 {
+                            // Not authenticated — stop retrying, let AppState handle re-auth
+                            break
+                        }
+                        // Other errors: exponential backoff (5s, 10s, 20s, ... max 60s)
+                        let delay = min(5.0 * pow(2.0, Double(retryCount)), 60.0)
+                        retryCount += 1
+                        try await Task.sleep(for: .seconds(delay))
                         continue
                     }
+
+                    // Connected successfully — reset backoff
+                    retryCount = 0
 
                     for try await line in bytes.lines {
                         guard !Task.isCancelled else { break }
@@ -55,7 +64,9 @@ final class NotificationService {
                     }
                 } catch {
                     if !Task.isCancelled {
-                        try? await Task.sleep(for: .seconds(5))
+                        let delay = min(5.0 * pow(2.0, Double(retryCount)), 60.0)
+                        retryCount += 1
+                        try? await Task.sleep(for: .seconds(delay))
                     }
                 }
             }

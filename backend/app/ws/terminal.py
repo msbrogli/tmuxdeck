@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import pty
+import random
 import signal
 import struct
 import termios
@@ -153,12 +154,21 @@ async def _pty_terminal(
     loop = asyncio.get_event_loop()
 
     async def pty_to_ws() -> None:
+        pending_sends = 0
+        max_pending = 32
         try:
             while True:
-                data = await loop.run_in_executor(None, os.read, master_fd, 4096)
+                # Backpressure: if client is slow, pause reading from PTY
+                while pending_sends >= max_pending:
+                    await asyncio.sleep(0.05)
+                data = await loop.run_in_executor(None, os.read, master_fd, 16384)
                 if not data:
                     break
-                await websocket.send_bytes(data)
+                pending_sends += 1
+                try:
+                    await websocket.send_bytes(data)
+                finally:
+                    pending_sends -= 1
         except (OSError, WebSocketDisconnect):
             pass
 
@@ -443,7 +453,7 @@ async def _pty_terminal(
         last_windows: list[dict] | None = None
         try:
             while True:
-                await asyncio.sleep(1)
+                await asyncio.sleep(3 + random.uniform(0, 1))
                 try:
                     windows = await tm.list_windows(container_id, session_name)
                     active = next(
@@ -812,12 +822,21 @@ async def terminal_ws(
         async def docker_to_ws():
             """Read from docker exec socket, send to WebSocket as binary."""
             loop = asyncio.get_event_loop()
+            pending_sends = 0
+            max_pending = 32
             try:
                 while True:
-                    data = await loop.run_in_executor(None, raw_sock.recv, 4096)
+                    # Backpressure: if client is slow, pause reading
+                    while pending_sends >= max_pending:
+                        await asyncio.sleep(0.05)
+                    data = await loop.run_in_executor(None, raw_sock.recv, 16384)
                     if not data:
                         break
-                    await websocket.send_bytes(data)
+                    pending_sends += 1
+                    try:
+                        await websocket.send_bytes(data)
+                    finally:
+                        pending_sends -= 1
             except (OSError, WebSocketDisconnect):
                 pass
 
@@ -1055,7 +1074,7 @@ async def terminal_ws(
             last_windows: list[dict] | None = None
             try:
                 while True:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(3 + random.uniform(0, 1))
                     try:
                         windows = await tm.list_windows(container_id, session_name)
                         active = next(

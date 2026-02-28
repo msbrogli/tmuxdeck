@@ -6,7 +6,8 @@ final class APIClient {
     var isConnected = false
     var lastError: APIError?
 
-    private let session: URLSession
+    // Exposed so NotificationService can reuse the same session (and cookies)
+    let urlSession: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
 
@@ -15,7 +16,7 @@ final class APIClient {
         config.httpCookieAcceptPolicy = .always
         config.httpShouldSetCookies = true
         config.httpCookieStorage = .shared
-        self.session = URLSession(configuration: config)
+        self.urlSession = URLSession(configuration: config)
 
         self.decoder = JSONDecoder()
         self.encoder = JSONEncoder()
@@ -188,7 +189,7 @@ final class APIClient {
             request.httpBody = try encoder.encode(body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        let (_, response) = try await session.data(for: request)
+        let (_, response) = try await urlSession.data(for: request)
         try validateResponse(response)
     }
 
@@ -203,13 +204,13 @@ final class APIClient {
         var request = try makeRequest(path: path, method: "PATCH")
         request.httpBody = try encoder.encode(body)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let (_, response) = try await session.data(for: request)
+        let (_, response) = try await urlSession.data(for: request)
         try validateResponse(response)
     }
 
     private func delete(_ path: String) async throws {
         let request = try makeRequest(path: path, method: "DELETE")
-        let (_, response) = try await session.data(for: request)
+        let (_, response) = try await urlSession.data(for: request)
         try validateResponse(response)
     }
 
@@ -227,7 +228,7 @@ final class APIClient {
     }
 
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await urlSession.data(for: request)
         try validateResponse(response)
         do {
             return try decoder.decode(T.self, from: data)
