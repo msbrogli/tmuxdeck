@@ -83,7 +83,7 @@ export function MainPage() {
   // useLayoutEffect avoids a visible blank frame.
   const poolEnsure = pool.ensure;
   useLayoutEffect(() => {
-    if (displayedSession && !isFoldedSelection(displayedSession)) {
+    if (displayedSession && isWindowSelection(displayedSession)) {
       poolEnsure(displayedSession);
     }
   }, [displayedSession, poolEnsure]);

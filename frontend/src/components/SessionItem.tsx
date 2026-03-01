@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Terminal as TerminalIcon, ChevronRight, ChevronDown, X, AppWindow, Bell, Circle, Plus, Info, Copy, Check, CircleOff } from 'lucide-react';
 import type { TmuxSession, TmuxWindow, SessionTarget, Selection } from '../types';
-import { isFoldedSelection } from '../types';
+import { isFoldedSelection, isWindowSelection } from '../types';
 import { api } from '../api/client';
 import { ConfirmDialog } from './ConfirmDialog';
 import { getSessionExpanded, saveSessionExpanded } from '../utils/sidebarState';
@@ -295,9 +295,9 @@ export function SessionItem({
         await api.swapWindows(containerId, session.id, data.windowIndex, targetIndex);
         // Keep the selected window selected at its new position
         if (hasAnyWindowSelected) {
-          if (selectedSession?.windowIndex === data.windowIndex) {
+          if (selectedWindowSession?.windowIndex === data.windowIndex) {
             onSelectWindow(targetIndex);
-          } else if (selectedSession?.windowIndex === targetIndex) {
+          } else if (selectedWindowSession?.windowIndex === targetIndex) {
             onSelectWindow(data.windowIndex);
           }
         }
@@ -405,11 +405,11 @@ export function SessionItem({
     selectedSession.containerId === containerId &&
     selectedSession.sessionId === session.id;
 
+  const selectedWindowSession = selectedSession != null && isWindowSelection(selectedSession) ? selectedSession : null;
   const hasAnyWindowSelected =
-    selectedSession != null &&
-    !isFoldedSelection(selectedSession) &&
-    selectedSession.containerId === containerId &&
-    selectedSession.sessionName === session.name;
+    selectedWindowSession != null &&
+    selectedWindowSession.containerId === containerId &&
+    selectedWindowSession.sessionName === session.name;
 
   const hasAnyWindowPreviewed =
     previewSession?.containerId === containerId &&
@@ -503,7 +503,7 @@ export function SessionItem({
           {session.windows.map((win) => {
             const isSelected =
               hasAnyWindowSelected &&
-              selectedSession?.windowIndex === win.index;
+              selectedWindowSession?.windowIndex === win.index;
 
             const isPreviewed =
               hasAnyWindowPreviewed &&
