@@ -10,7 +10,13 @@ struct SidebarView: View {
     @State private var containers: [ContainerResponse] = []
     @State private var isLoading = false
     @State private var searchText = ""
-    private let sessionOrderStore = SessionOrderStore()
+    @State private var orderingService: OrderingService
+
+    init(apiClient: APIClient, selection: Binding<TerminalTarget?>) {
+        self.apiClient = apiClient
+        self._selection = selection
+        self._orderingService = State(initialValue: OrderingService(apiClient: apiClient))
+    }
     @State private var showNewSession = false
     @State private var showSettings = false
     @State private var showCreateContainer = false
@@ -21,6 +27,9 @@ struct SidebarView: View {
     @State private var renameSessionContainerId = ""
     @State private var renameSessionId = ""
     @State private var renameSessionName = ""
+    // Inline session rename
+    @State private var inlineEditingSessionId: String?
+    @State private var inlineEditName = ""
     // Move window to session
     @State private var showMoveWindow = false
     @State private var moveWindowContainerId = ""
@@ -120,9 +129,10 @@ struct SidebarView: View {
     }
 
     private var filteredContainers: [ContainerResponse] {
-        if searchText.isEmpty { return containers }
+        let ordered = orderingService.sortedContainers(containers)
+        if searchText.isEmpty { return ordered }
         let q = searchText.lowercased()
-        return containers.filter { c in
+        return ordered.filter { c in
             c.displayName.lowercased().contains(q) ||
             c.sessions.contains { s in
                 s.name.lowercased().contains(q) ||
@@ -163,7 +173,7 @@ struct SidebarView: View {
                 }
             }
         } else {
-            let orderedSessions = sessionOrderStore.sorted(sessions: container.sessions, for: container.id)
+            let orderedSessions = orderingService.sortedSessions(container.sessions, for: container.id)
             ForEach(orderedSessions) { session in
                 DisclosureGroup {
                     ForEach(session.windows) { window in
@@ -204,7 +214,7 @@ struct SidebarView: View {
                         }
                         .tag(target)
                         .contextMenu {
-                            if window.index > 0 {
+                            if window.index > (session.windows.first?.index ?? 0) {
                                 Button {
                                     Task {
                                         await swapWindows(
@@ -219,7 +229,7 @@ struct SidebarView: View {
                                 }
                             }
 
-                            if window.index < session.windows.count - 1 {
+                            if window.index < (session.windows.last?.index ?? 0) {
                                 Button {
                                     Task {
                                         await swapWindows(
@@ -252,9 +262,29 @@ struct SidebarView: View {
                         Image(systemName: "terminal")
                             .font(.caption)
                             .foregroundStyle(.tint)
-                        Text(session.name)
+                        if inlineEditingSessionId == session.id {
+                            TextField("Session name", text: $inlineEditName, onCommit: {
+                                Task {
+                                    await commitInlineRename(containerId: container.id, sessionId: session.id)
+                                }
+                            })
                             .font(.subheadline)
                             .fontWeight(.medium)
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit {
+                                Task {
+                                    await commitInlineRename(containerId: container.id, sessionId: session.id)
+                                }
+                            }
+                        } else {
+                            Text(session.name)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .onLongPressGesture {
+                                    inlineEditingSessionId = session.id
+                                    inlineEditName = session.name
+                                }
+                        }
                         Spacer()
                         Text("\(session.windows.count)w")
                             .font(.caption2)
@@ -293,7 +323,7 @@ struct SidebarView: View {
             .onMove { source, destination in
                 var ids = orderedSessions.map(\.id)
                 ids.move(fromOffsets: source, toOffset: destination)
-                sessionOrderStore.setOrder(sessionIds: ids, for: container.id)
+                Task { await orderingService.saveSessionOrder(ids, for: container.id) }
             }
         }
     }
@@ -303,8 +333,15 @@ struct SidebarView: View {
     private func loadContainers() async {
         isLoading = true
         do {
-            let response = try await apiClient.getContainers()
+            async let containersFetch = apiClient.getContainers()
+            async let orderFetch: () = orderingService.fetchContainerOrder()
+            let response = try await containersFetch
+            _ = await orderFetch
             containers = response.containers
+            // Fetch session ordering for each running container
+            for container in response.containers where container.status.lowercased() == "running" {
+                await orderingService.fetchSessionOrder(for: container.id)
+            }
         } catch {}
         isLoading = false
     }
@@ -323,6 +360,15 @@ struct SidebarView: View {
 
     private func deleteSession(_ containerId: String, _ sessionId: String) async {
         try? await apiClient.deleteSession(containerId: containerId, sessionId: sessionId)
+        await loadContainers()
+    }
+
+    private func commitInlineRename(containerId: String, sessionId: String) async {
+        let newName = inlineEditName.trimmingCharacters(in: .whitespaces)
+        inlineEditingSessionId = nil
+        guard !newName.isEmpty else { return }
+        try? await apiClient.renameSession(containerId: containerId, sessionId: sessionId, name: newName)
+        inlineEditName = ""
         await loadContainers()
     }
 

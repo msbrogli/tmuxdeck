@@ -17,7 +17,6 @@ final class AppState {
     let apiClient = APIClient()
     let notificationService = NotificationService()
     let preferences = UserPreferences()
-    let terminalPool = TerminalPoolService()
 
     var servers: [ServerConfig] = ServerConfig.loadAll() {
         didSet {

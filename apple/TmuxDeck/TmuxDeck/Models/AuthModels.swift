@@ -20,4 +20,15 @@ struct OkResponse: Codable {
 
 struct ErrorResponse: Codable {
     let detail: String
+    let remainingAttempts: Int?
+    let retryAfter: Double?
+    let locked: Bool?
+}
+
+struct OrderRequest: Codable {
+    let order: [String]
+}
+
+struct OrderResponse: Codable {
+    let order: [String]
 }

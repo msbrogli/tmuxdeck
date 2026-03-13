@@ -15,6 +15,11 @@ struct PINEntryView: View {
     @State private var error: String?
     @State private var isLoading = false
     @State private var showBiometricPrompt = false
+    @State private var remainingAttempts: Int?
+    @State private var retryAfter: Double?
+    @State private var isLocked = false
+    @State private var countdownSeconds: Int = 0
+    @State private var countdownTimer: Timer?
 
     private let pinLength = 4
 
@@ -47,10 +52,36 @@ struct PINEntryView: View {
             }
             .padding(.vertical)
 
-            if let error = error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+            if isLocked {
+                VStack(spacing: 4) {
+                    Image(systemName: "lock.fill")
+                        .foregroundStyle(.red)
+                    Text("Account locked")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fontWeight(.semibold)
+                    if countdownSeconds > 0 {
+                        Text("Try again in \(countdownSeconds)s")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if let error = error {
+                VStack(spacing: 2) {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    if let remaining = remainingAttempts {
+                        Text("\(remaining) attempt\(remaining == 1 ? "" : "s") remaining")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                    if countdownSeconds > 0 {
+                        Text("Wait \(countdownSeconds)s before retrying")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             // Number pad
@@ -79,6 +110,8 @@ struct PINEntryView: View {
                 }
             }
             .padding(.horizontal, 40)
+            .disabled(isLocked || countdownSeconds > 0)
+            .opacity((isLocked || countdownSeconds > 0) ? 0.5 : 1.0)
 
             if isLoading {
                 ProgressView()
@@ -162,12 +195,29 @@ struct PINEntryView: View {
     private func handlePINComplete() async {
         switch mode {
         case .login:
+            guard !isLocked && countdownSeconds == 0 else {
+                pin = ""
+                return
+            }
             isLoading = true
             do {
                 try await appState.loginWithPIN(pin)
+                clearRateLimitState()
                 if KeychainService.shared.biometricsAvailable {
                     showBiometricPrompt = true
                 }
+            } catch let apiError as APIError {
+                if case .rateLimited(let message, let remaining, let retry, let locked) = apiError {
+                    self.error = message
+                    self.remainingAttempts = remaining
+                    self.isLocked = locked
+                    if let retry, retry > 0 {
+                        startCountdown(seconds: Int(ceil(retry)))
+                    }
+                } else {
+                    self.error = "Invalid PIN"
+                }
+                pin = ""
             } catch {
                 self.error = "Invalid PIN"
                 pin = ""
@@ -177,6 +227,33 @@ struct PINEntryView: View {
         case .setup:
             isConfirming = true
         }
+    }
+
+    private func startCountdown(seconds: Int) {
+        countdownTimer?.invalidate()
+        countdownSeconds = seconds
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+            if countdownSeconds > 1 {
+                countdownSeconds -= 1
+            } else {
+                countdownSeconds = 0
+                timer.invalidate()
+                countdownTimer = nil
+                if isLocked {
+                    isLocked = false
+                }
+            }
+        }
+    }
+
+    private func clearRateLimitState() {
+        error = nil
+        remainingAttempts = nil
+        retryAfter = nil
+        isLocked = false
+        countdownSeconds = 0
+        countdownTimer?.invalidate()
+        countdownTimer = nil
     }
 
     private func handleConfirmComplete() async {

@@ -54,6 +54,7 @@
 		D3E4F5A60718B9C1E5F6A707 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A708 /* HelpView.swift */; };
 		D3E4F5A60718B9C1E5F6A709 /* TerminalPoolService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A70A /* TerminalPoolService.swift */; };
 		D3E4F5A60718B9C1E5F6A70B /* SessionOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A60718B9C1E5F6A70C /* SessionOrderStore.swift */; };
+		E4F5A60718B9C1E5F6A70D01 /* ModifierToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A60718B9C1E5F6A70D02 /* ModifierToolbar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -105,6 +106,7 @@
 		D3E4F5A60718B9C1E5F6A708 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		D3E4F5A60718B9C1E5F6A70A /* TerminalPoolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPoolService.swift; sourceTree = "<group>"; };
 		D3E4F5A60718B9C1E5F6A70C /* SessionOrderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionOrderStore.swift; sourceTree = "<group>"; };
+		E4F5A60718B9C1E5F6A70D02 /* ModifierToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierToolbar.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,6 +131,7 @@
 				EFBB292A794852C6A179AEAA /* VoiceInputButton.swift */,
 				B1C2D3E4F5A60718A9B0C1E3 /* PaneIndicator.swift */,
 				C2D3E4F5A60718B9B0C1E4F6 /* ScrollbackOverlayView.swift */,
+				E4F5A60718B9C1E5F6A70D02 /* ModifierToolbar.swift */,
 			);
 			path = Terminal;
 			sourceTree = "<group>";
@@ -388,6 +391,7 @@
 				D3E4F5A60718B9C1E5F6A707 /* HelpView.swift in Sources */,
 				D3E4F5A60718B9C1E5F6A709 /* TerminalPoolService.swift in Sources */,
 				D3E4F5A60718B9C1E5F6A70B /* SessionOrderStore.swift in Sources */,
+				E4F5A60718B9C1E5F6A70D01 /* ModifierToolbar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

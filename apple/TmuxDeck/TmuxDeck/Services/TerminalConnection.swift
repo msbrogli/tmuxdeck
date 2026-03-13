@@ -107,8 +107,8 @@ final class TerminalConnection {
         sendText("SELECT_WINDOW:\(index)")
     }
 
-    func scroll(direction: String, count: Int = 3) {
-        sendText("SCROLL:\(direction):\(count)")
+    func scroll(direction: String, count: Int = 3, type: String = "line") {
+        sendText("SCROLL:\(direction):\(count):\(type)")
     }
 
     func selectPane(direction: String) {

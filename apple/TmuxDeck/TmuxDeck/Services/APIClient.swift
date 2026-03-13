@@ -191,6 +191,24 @@ final class APIClient {
         )
     }
 
+    // MARK: - Ordering
+
+    func getContainerOrder() async throws -> OrderResponse {
+        try await get("/api/v1/ordering/containers")
+    }
+
+    func saveContainerOrder(_ order: [String]) async throws -> OrderResponse {
+        try await put("/api/v1/ordering/containers", body: OrderRequest(order: order))
+    }
+
+    func getSessionOrder(containerId: String) async throws -> OrderResponse {
+        try await get("/api/v1/ordering/containers/\(containerId)/sessions")
+    }
+
+    func saveSessionOrder(containerId: String, order: [String]) async throws -> OrderResponse {
+        try await put("/api/v1/ordering/containers/\(containerId)/sessions", body: OrderRequest(order: order))
+    }
+
     // MARK: - Templates
 
     func getTemplates() async throws -> [TemplateResponse] {
@@ -252,8 +270,8 @@ final class APIClient {
             request.httpBody = try encoder.encode(body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        let (_, response) = try await urlSession.data(for: request)
-        try validateResponse(response)
+        let (data, response) = try await urlSession.data(for: request)
+        try validateResponse(response, data: data)
     }
 
     private func patch<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
@@ -263,18 +281,25 @@ final class APIClient {
         return try await perform(request)
     }
 
+    private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        var request = try makeRequest(path: path, method: "PUT")
+        request.httpBody = try encoder.encode(body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return try await perform(request)
+    }
+
     private func patchNoContent<B: Encodable>(_ path: String, body: B) async throws {
         var request = try makeRequest(path: path, method: "PATCH")
         request.httpBody = try encoder.encode(body)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let (_, response) = try await urlSession.data(for: request)
-        try validateResponse(response)
+        let (data, response) = try await urlSession.data(for: request)
+        try validateResponse(response, data: data)
     }
 
     private func delete(_ path: String) async throws {
         let request = try makeRequest(path: path, method: "DELETE")
-        let (_, response) = try await urlSession.data(for: request)
-        try validateResponse(response)
+        let (data, response) = try await urlSession.data(for: request)
+        try validateResponse(response, data: data)
     }
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
@@ -292,7 +317,7 @@ final class APIClient {
 
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await urlSession.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
@@ -303,16 +328,29 @@ final class APIClient {
     /// Called when a 401 is received — set by AppState to redirect to login
     var onUnauthorized: (() -> Void)?
 
-    private func validateResponse(_ response: URLResponse) throws {
+    private func validateResponse(_ response: URLResponse, data: Data? = nil) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
         switch httpResponse.statusCode {
         case 200...299:
             return
-        case 401:
-            Task { @MainActor in
-                onUnauthorized?()
+        case 401, 423, 429:
+            // Try to parse rate limit info from response body
+            if let data = data,
+               let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                if httpResponse.statusCode == 401 && errorResponse.remainingAttempts == nil {
+                    Task { @MainActor in onUnauthorized?() }
+                }
+                throw APIError.rateLimited(
+                    message: errorResponse.detail,
+                    remainingAttempts: errorResponse.remainingAttempts,
+                    retryAfter: errorResponse.retryAfter,
+                    locked: errorResponse.locked ?? false
+                )
+            }
+            if httpResponse.statusCode == 401 {
+                Task { @MainActor in onUnauthorized?() }
             }
             throw APIError.unauthorized
         case 404:
@@ -335,6 +373,7 @@ enum APIError: LocalizedError {
     case serverMessage(String)
     case decodingFailed(Error)
     case networkError(Error)
+    case rateLimited(message: String, remainingAttempts: Int?, retryAfter: Double?, locked: Bool)
 
     var errorDescription: String? {
         switch self {
@@ -347,6 +386,7 @@ enum APIError: LocalizedError {
         case .serverMessage(let msg): return msg
         case .decodingFailed(let error): return "Failed to decode response: \(error.localizedDescription)"
         case .networkError(let error): return error.localizedDescription
+        case .rateLimited(let message, _, _, _): return message
         }
     }
 }

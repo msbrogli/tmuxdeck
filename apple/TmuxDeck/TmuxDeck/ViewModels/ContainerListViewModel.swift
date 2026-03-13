@@ -9,16 +9,19 @@ final class ContainerListViewModel {
     var searchText = ""
 
     private let apiClient: APIClient
+    let orderingService: OrderingService
 
     init(apiClient: APIClient) {
         self.apiClient = apiClient
+        self.orderingService = OrderingService(apiClient: apiClient)
     }
 
     var filteredContainers: [ContainerResponse] {
+        let ordered = orderingService.sortedContainers(containers)
         if searchText.isEmpty {
-            return containers
+            return ordered
         }
-        return containers.filter {
+        return ordered.filter {
             $0.displayName.localizedCaseInsensitiveContains(searchText) ||
             $0.name.localizedCaseInsensitiveContains(searchText)
         }
@@ -33,7 +36,10 @@ final class ContainerListViewModel {
         error = nil
 
         do {
-            let response = try await apiClient.getContainers()
+            async let containersFetch = apiClient.getContainers()
+            async let orderFetch: () = orderingService.fetchContainerOrder()
+            let response = try await containersFetch
+            _ = await orderFetch
             containers = response.containers
             dockerError = response.dockerError
         } catch {

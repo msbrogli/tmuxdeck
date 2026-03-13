@@ -41,6 +41,12 @@ struct SwiftTerminalView: UIViewRepresentable {
 
         viewModel.connectIfNeeded()
 
+        // Force a relayout after SwiftUI layout settles to get correct dimensions
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak terminalView] in
+            terminalView?.setNeedsLayout()
+            terminalView?.layoutIfNeeded()
+        }
+
         return terminalView
     }
 
@@ -115,7 +121,11 @@ struct SwiftTerminalView: UIViewRepresentable {
             if viewModel.showingScrollback {
                 viewModel.dismissScrollback()
             }
-            viewModel.sendInput(Data(data))
+            if viewModel.ctrlActive || viewModel.shiftActive || viewModel.altActive {
+                viewModel.sendModifiedKey(Array(data))
+            } else {
+                viewModel.sendInput(Data(data))
+            }
         }
 
         func scrolled(source: TerminalView, position: Double) {}

@@ -11,6 +11,8 @@ struct SessionTreeView: View {
     @State private var error: String?
     @State private var showNewSession = false
     @State private var newSessionName = ""
+    @State private var inlineEditingSessionId: String?
+    @State private var inlineEditName = ""
 
     var body: some View {
         List {
@@ -41,7 +43,20 @@ struct SessionTreeView: View {
                             )
                         }
                     } label: {
-                        SessionHeader(session: session)
+                        if inlineEditingSessionId == session.id {
+                            InlineSessionRenameField(
+                                name: $inlineEditName,
+                                onCommit: {
+                                    Task { await commitInlineRename(session: session) }
+                                }
+                            )
+                        } else {
+                            SessionHeader(session: session)
+                                .onLongPressGesture {
+                                    inlineEditingSessionId = session.id
+                                    inlineEditName = session.name
+                                }
+                        }
                     }
                 }
                 .swipeActions(edge: .trailing) {
@@ -119,6 +134,15 @@ struct SessionTreeView: View {
         }
     }
 
+    private func commitInlineRename(session: TmuxSessionResponse) async {
+        let newName = inlineEditName.trimmingCharacters(in: .whitespaces)
+        inlineEditingSessionId = nil
+        guard !newName.isEmpty else { return }
+        try? await apiClient.renameSession(containerId: container.id, sessionId: session.id, name: newName)
+        inlineEditName = ""
+        await loadSessions()
+    }
+
     private func deleteSession(_ session: TmuxSessionResponse) async {
         do {
             try await apiClient.deleteSession(containerId: container.id, sessionId: session.id)
@@ -193,6 +217,22 @@ struct WindowRow: View {
                     .font(.caption)
                     .foregroundStyle(.green)
             }
+        }
+    }
+}
+
+struct InlineSessionRenameField: View {
+    @Binding var name: String
+    let onCommit: () -> Void
+
+    var body: some View {
+        HStack {
+            Image(systemName: "terminal")
+                .foregroundStyle(.tint)
+            TextField("Session name", text: $name)
+                .font(.headline)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { onCommit() }
         }
     }
 }

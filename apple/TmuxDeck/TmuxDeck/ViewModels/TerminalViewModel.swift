@@ -20,6 +20,11 @@ final class TerminalViewModel {
     var activePaneIndex: Int = 0
     var isZoomed = false
 
+    // Modifier key toggles for on-screen toolbar
+    var ctrlActive = false
+    var shiftActive = false
+    var altActive = false
+
     /// Set by SwiftTerminalView to feed incoming bytes into the TerminalView
     var feedHandler: (([UInt8]) -> Void)?
 
@@ -33,30 +38,25 @@ final class TerminalViewModel {
     /// Reference to the terminal view for keyboard control
     weak var terminalViewRef: TerminalView?
 
-    private(set) var connection: TerminalConnection!
+    let connection = TerminalConnection()
     private let apiClient: APIClient
     private let preferences: UserPreferences
     private var hasConnected = false
-    private weak var terminalPool: TerminalPoolService?
+    private var resizeWorkItem: DispatchWorkItem?
+    private var lastSentCols: Int = 0
+    private var lastSentRows: Int = 0
 
     let containerId: String
     let sessionName: String
 
-    init(apiClient: APIClient, preferences: UserPreferences, containerId: String, sessionName: String, windows: [TmuxWindowResponse], terminalPool: TerminalPoolService? = nil) {
+    init(apiClient: APIClient, preferences: UserPreferences, containerId: String, sessionName: String, windows: [TmuxWindowResponse]) {
         self.apiClient = apiClient
         self.preferences = preferences
         self.containerId = containerId
         self.sessionName = sessionName
         self.windows = windows
-        self.terminalPool = terminalPool
         self.fontSize = preferences.fontSize
         self.theme = preferences.currentTheme
-
-        if let pool = terminalPool {
-            self.connection = pool.connection(for: containerId, sessionName: sessionName)
-        } else {
-            self.connection = TerminalConnection()
-        }
 
         if let active = windows.first(where: { $0.active }) {
             self.activeWindowIndex = active.index
@@ -70,8 +70,6 @@ final class TerminalViewModel {
     func connectIfNeeded() {
         guard !hasConnected, let feedHandler = feedHandler else { return }
         hasConnected = true
-
-        terminalPool?.setActive(containerId: containerId, sessionName: sessionName)
 
         guard let baseURL = apiClient.baseURL else {
             error = "No server configured"
@@ -96,21 +94,7 @@ final class TerminalViewModel {
     }
 
     func disconnect() {
-        if terminalPool != nil {
-            // Keep alive in pool, just touch it
-            terminalPool?.touch(containerId: containerId, sessionName: sessionName)
-        } else {
-            connection.disconnect()
-        }
-        hasConnected = false
-    }
-
-    func forceDisconnect() {
-        if let pool = terminalPool {
-            pool.remove(containerId: containerId, sessionName: sessionName)
-        } else {
-            connection.disconnect()
-        }
+        connection.disconnect()
         hasConnected = false
     }
 
@@ -118,8 +102,54 @@ final class TerminalViewModel {
         connection.sendBinary(data)
     }
 
+    /// Apply active modifiers to raw key bytes and send, then clear one-shot modifiers
+    func sendModifiedKey(_ bytes: [UInt8]) {
+        var result = bytes
+
+        // For single printable characters, apply Ctrl modifier (maps a-z to 0x01-0x1A)
+        if ctrlActive && bytes.count == 1 {
+            let b = bytes[0]
+            if b >= 0x61 && b <= 0x7A { // a-z
+                result = [b - 0x60]
+            } else if b >= 0x41 && b <= 0x5A { // A-Z
+                result = [b - 0x40]
+            }
+        }
+
+        // For arrow keys (ESC [ A/B/C/D), apply shift/alt/ctrl as CSI parameters
+        if bytes.count == 3 && bytes[0] == 0x1B && bytes[1] == 0x5B &&
+           (bytes[2] >= 0x41 && bytes[2] <= 0x44) {
+            var modifier = 1
+            if shiftActive { modifier += 1 }
+            if altActive { modifier += 2 }
+            if ctrlActive { modifier += 4 }
+            if modifier > 1 {
+                // ESC [ 1 ; <modifier> <key>
+                result = [0x1B, 0x5B, 0x31, 0x3B, UInt8(0x30 + modifier), bytes[2]]
+            }
+        }
+
+        connection.sendBinary(Data(result))
+
+        // Clear modifiers after use (one-shot behavior)
+        ctrlActive = false
+        shiftActive = false
+        altActive = false
+    }
+
     func sendResize(cols: Int, rows: Int) {
-        connection.sendResize(cols: cols, rows: rows)
+        // Debounce resize to let SwiftUI layout settle before telling tmux
+        resizeWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            // Only send if dimensions actually changed
+            guard cols != self.lastSentCols || rows != self.lastSentRows else { return }
+            self.lastSentCols = cols
+            self.lastSentRows = rows
+            self.connection.sendResize(cols: cols, rows: rows)
+        }
+        resizeWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
     }
 
     func switchWindow(to index: Int) {
