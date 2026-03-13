@@ -68,6 +68,7 @@ struct WindowTab: View {
                     }
                     .popover(isPresented: $showHooksHint) {
                         ClaudeHooksHintView()
+                            .presentationCompactAdaptation(.popover)
                     }
             }
 
@@ -96,18 +97,10 @@ struct WindowTab: View {
 }
 
 struct ClaudeHooksHintIcon: View {
-    @State private var showHint = false
-
     var body: some View {
         Image(systemName: "info.circle")
             .font(.system(size: 9))
             .foregroundStyle(.orange)
-            .onTapGesture {
-                showHint = true
-            }
-            .popover(isPresented: $showHint) {
-                ClaudeHooksHintView()
-            }
     }
 }
 

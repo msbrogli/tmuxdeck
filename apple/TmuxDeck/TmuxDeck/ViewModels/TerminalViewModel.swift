@@ -33,30 +33,22 @@ final class TerminalViewModel {
     /// Reference to the terminal view for keyboard control
     weak var terminalViewRef: TerminalView?
 
-    private(set) var connection: TerminalConnection!
+    let connection = TerminalConnection()
     private let apiClient: APIClient
     private let preferences: UserPreferences
     private var hasConnected = false
-    private weak var terminalPool: TerminalPoolService?
 
     let containerId: String
     let sessionName: String
 
-    init(apiClient: APIClient, preferences: UserPreferences, containerId: String, sessionName: String, windows: [TmuxWindowResponse], terminalPool: TerminalPoolService? = nil) {
+    init(apiClient: APIClient, preferences: UserPreferences, containerId: String, sessionName: String, windows: [TmuxWindowResponse]) {
         self.apiClient = apiClient
         self.preferences = preferences
         self.containerId = containerId
         self.sessionName = sessionName
         self.windows = windows
-        self.terminalPool = terminalPool
         self.fontSize = preferences.fontSize
         self.theme = preferences.currentTheme
-
-        if let pool = terminalPool {
-            self.connection = pool.connection(for: containerId, sessionName: sessionName)
-        } else {
-            self.connection = TerminalConnection()
-        }
 
         if let active = windows.first(where: { $0.active }) {
             self.activeWindowIndex = active.index
@@ -70,8 +62,6 @@ final class TerminalViewModel {
     func connectIfNeeded() {
         guard !hasConnected, let feedHandler = feedHandler else { return }
         hasConnected = true
-
-        terminalPool?.setActive(containerId: containerId, sessionName: sessionName)
 
         guard let baseURL = apiClient.baseURL else {
             error = "No server configured"
@@ -96,21 +86,7 @@ final class TerminalViewModel {
     }
 
     func disconnect() {
-        if terminalPool != nil {
-            // Keep alive in pool, just touch it
-            terminalPool?.touch(containerId: containerId, sessionName: sessionName)
-        } else {
-            connection.disconnect()
-        }
-        hasConnected = false
-    }
-
-    func forceDisconnect() {
-        if let pool = terminalPool {
-            pool.remove(containerId: containerId, sessionName: sessionName)
-        } else {
-            connection.disconnect()
-        }
+        connection.disconnect()
         hasConnected = false
     }
 
