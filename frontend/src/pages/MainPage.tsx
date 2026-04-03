@@ -14,7 +14,7 @@ import { useSessionExpandedState } from '../hooks/useSessionExpandedState';
 import { useContainerExpandedState } from '../hooks/useContainerExpandedState';
 import { api } from '../api/client';
 import { logout } from '../api/httpClient';
-import type { SessionTarget, Selection, FoldedSessionTarget, FoldedContainerTarget, Container, ContainerListResponse, Settings, ClaudeNotification, TmuxWindow, WorkspaceListResponse } from '../types';
+import type { SessionTarget, Selection, FoldedSessionTarget, FoldedContainerTarget, Container, ContainerListResponse, Settings, ClaudeNotification, TmuxWindow, WorkspaceListResponse, WorkspaceMember } from '../types';
 import { isWindowSelection, isFoldedSelection, isFoldedContainerSelection } from '../types';
 import { sortSessionsByOrder } from '../utils/sessionOrder';
 import { filterWorkspace } from '../utils/workspaceFilter';
@@ -228,6 +228,27 @@ export function MainPage() {
 
   const selectSession = useCallback((containerId: string, sessionName: string, windowIndex: number) => {
     clearPreviewImmediate();
+
+    // Auto-switch workspace if the selected session isn't in the current one
+    const wsId = getActiveWorkspaceId();
+    if (wsId !== 'all') {
+      const wsData = queryClient.getQueryData<WorkspaceListResponse>(['workspaces']);
+      const activeWs = wsData?.workspaces.find((w) => w.id === wsId);
+      if (activeWs && !activeWs.isDefault) {
+        const fullSessionId = `${containerId}:${sessionName}`;
+        const sessionInWs = (members: WorkspaceMember[]) =>
+          members.some((m) =>
+            (m.type === 'source' && m.sourceId === containerId) ||
+            (m.type === 'session' && m.sourceId === containerId && m.sessionId === fullSessionId)
+          );
+        if (!sessionInWs(activeWs.members)) {
+          // Find another workspace that contains the session
+          const target = wsData?.workspaces.find((w) => !w.isDefault && w.id !== wsId && sessionInWs(w.members));
+          saveActiveWorkspaceId(target ? target.id : 'all');
+        }
+      }
+    }
+
     // Ensure entry exists BEFORE setting selection — batched in same React update
     pool.ensure({ containerId, sessionName, windowIndex });
     setSelectedSession({ containerId, sessionName, windowIndex });
@@ -237,7 +258,7 @@ export function MainPage() {
       ...prev.filter((id) => id !== key),
     ].slice(0, 20));
     requestAnimationFrame(() => poolRef.current?.focusActive());
-  }, [clearPreviewImmediate, pool]);
+  }, [clearPreviewImmediate, pool, queryClient]);
 
   const selectFoldedSession = useCallback((target: FoldedSessionTarget) => {
     clearPreviewImmediate();
