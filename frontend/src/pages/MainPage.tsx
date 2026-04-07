@@ -851,6 +851,12 @@ export function MainPage() {
               <span className="text-gray-400">{winSel.sessionName}</span>
               <span className="text-gray-700">/</span>
               <span className="text-gray-400">{winSel.windowIndex}: {win?.name ?? '?'}</span>
+              {win?.path && (
+                <>
+                  <span className="text-gray-700">·</span>
+                  <span className="text-gray-500 truncate" title={win.path}>{win.path}</span>
+                </>
+              )}
             </div>
           );
         })()}

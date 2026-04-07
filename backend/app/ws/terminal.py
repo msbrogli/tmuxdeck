@@ -692,12 +692,12 @@ async def _pty_terminal(
                     )
                     # Serialize to comparable form (ignore pane_status fluctuations)
                     win_summary = [
-                        (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                        (w["index"], w["name"], w.get("bell"), w.get("activity"), w.get("path"))
                         for w in windows
                     ]
                     last_summary = (
                         [
-                            (w["index"], w["name"], w.get("bell"), w.get("activity"))
+                            (w["index"], w["name"], w.get("bell"), w.get("activity"), w.get("path"))
                             for w in last_windows
                         ]
                         if last_windows
