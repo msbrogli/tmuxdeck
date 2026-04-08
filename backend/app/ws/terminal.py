@@ -328,6 +328,21 @@ async def _pty_terminal(
                                 env=_clean_env(),
                             )
                             await sw.wait()
+                            # Force a full client redraw.  tmux's select-window
+                            # issued via the command channel does NOT repaint
+                            # the attached client — it only mutates server
+                            # state — so cells not explicitly rewritten by the
+                            # new window's program leak from the previous
+                            # window (visible overlap / partial blanks).
+                            # refresh-client fixes this the same way pressing
+                            # prefix-n inside the attached client does.
+                            rc = await asyncio.create_subprocess_exec(
+                                *tmux_prefix, "refresh-client", "-t", session_name,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL,
+                                env=_clean_env(),
+                            )
+                            await rc.wait()
                         except (ValueError, OSError) as e:
                             logger.debug("%s select-window failed: %s", label, e)
                         continue
