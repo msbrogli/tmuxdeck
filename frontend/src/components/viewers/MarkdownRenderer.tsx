@@ -1,8 +1,45 @@
+import { useEffect, useId, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import mermaid from 'mermaid';
+
+mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+function MermaidDiagram({ chart }: { chart: string }) {
+  const id = useId().replace(/:/g, '_');
+  const [svg, setSvg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    mermaid.render(`mermaid${id}`, chart).then(
+      ({ svg: result }) => { if (!cancelled) setSvg(result); },
+      (err) => { if (!cancelled) setError(String(err)); },
+    );
+    return () => { cancelled = true; };
+  }, [id, chart]);
+
+  if (error) {
+    return (
+      <div className="rounded-lg bg-red-900/30 border border-red-700 p-4 text-sm">
+        <div className="text-red-400 mb-2">Mermaid diagram error</div>
+        <pre className="text-gray-400 whitespace-pre-wrap">{chart}</pre>
+      </div>
+    );
+  }
+  if (!svg) {
+    return <div className="text-gray-500 p-4">Rendering diagram...</div>;
+  }
+  return (
+    <div
+      className="overflow-x-auto my-4 flex justify-center"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
 
 interface MarkdownRendererProps {
   content: string;
@@ -17,6 +54,9 @@ const components: Components = {
   h6: ({ children }) => <h6 className="md-h6">{children}</h6>,
   code: ({ className, children, ...props }) => {
     const match = className?.match(/language-(\w+)/);
+    if (match && match[1] === 'mermaid') {
+      return <MermaidDiagram chart={String(children).replace(/\n$/, '')} />;
+    }
     if (match) {
       return (
         <SyntaxHighlighter
