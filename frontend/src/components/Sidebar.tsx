@@ -17,7 +17,7 @@ import { NewContainerDialog } from './NewContainerDialog';
 import { RestoreDialog } from './RestoreDialog';
 import { WorkspaceTabs } from './WorkspaceTabs';
 import { WorkspaceAddMemberDialog } from './WorkspaceAddMemberDialog';
-import type { Container, SessionTarget, Selection, Workspace } from '../types';
+import type { Container, SessionTarget, Selection } from '../types';
 import { getSidebarCollapsed, saveSidebarCollapsed, getSectionsCollapsed, saveSectionsCollapsed, getActiveWorkspaceId, saveActiveWorkspaceId } from '../utils/sidebarState';
 import { filterWorkspace, type FilterResult } from '../utils/workspaceFilter';
 
@@ -137,7 +137,6 @@ export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewS
 
   const workspaces = workspacesData?.workspaces ?? [];
   const workspaceOrder = workspacesData?.workspaceOrder ?? [];
-  const hasCustomWorkspaces = workspaces.length > 1;
 
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState(getActiveWorkspaceId);
   const setActiveWorkspaceId = (id: string) => {
@@ -358,6 +357,7 @@ export function Sidebar({ collapsed: initialCollapsed, selectedSession, previewS
                   onToggleSection={isSpecial ? () => setSectionsCollapsed((s) => ({ ...s, [sectionKey]: !s[sectionKey] })) : undefined}
                   filterResult={filterResult}
                   workspaces={workspaces}
+                  activeWorkspace={activeWorkspace}
                 />
               </div>
             );

@@ -1,14 +1,13 @@
 services:
   backend:
     build: ./backend
-    ports:
-      - "${BIND_HOST:-127.0.0.1}:8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - backend-data:/data
       - ./docker/templates:/app/docker/templates:ro
       - ./scripts:/app/scripts:ro
       - /tmp/tmux-${HOST_UID:-1000}:/tmp/tmux-host
+      - ${HOME}:${HOME}:ro
     environment:
       - HOST_UID=${HOST_UID:-1000}
       - HOST_TMUX_SOCKET=/tmp/tmux-host/default
@@ -17,7 +16,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "${BIND_HOST:-127.0.0.1}:3000:80"
+      - "${BIND_HOST:-127.0.0.1}:5173:80"
     depends_on:
       - backend
     environment:
