@@ -866,6 +866,10 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
       theme: THEME,
       allowProposedApi: true,
+      // Scrolling is handled server-side via tmux copy-mode, so xterm keeps no
+      // history. Must stay 0: any non-zero scrollback makes FitAddon reserve
+      // ~14px for a scrollbar (overviewRuler?.width || 14), leaving a dead gap
+      // on the right that never fills, even on resize.
       scrollback: 0,
     });
 
