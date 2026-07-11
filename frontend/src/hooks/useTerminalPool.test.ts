@@ -21,9 +21,9 @@ describe('useTerminalPool', () => {
     act(() => {
       key = result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
     });
-    expect(key!).toBe('c1-s1-0');
+    expect(key!).toBe('c1-s1');
     expect(result.current.entries).toHaveLength(1);
-    expect(result.current.entries[0].key).toBe('c1-s1-0');
+    expect(result.current.entries[0].key).toBe('c1-s1');
     expect(result.current.entries[0].containerId).toBe('c1');
   });
 
@@ -60,14 +60,14 @@ describe('useTerminalPool', () => {
     });
     expect(result.current.entries).toHaveLength(2);
     // c1 was LRU, should be evicted
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c2-s2-0', 'c3-s3-0']);
+    expect(result.current.entries.map((e) => e.key)).toEqual(['c2-s2', 'c3-s3']);
   });
 
   it('active key is protected from LRU eviction', () => {
     const { result } = renderHook(() => useTerminalPool({ maxSize: 2 }));
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
-      result.current.setActiveKey('c1-s1-0');
+      result.current.setActiveKey('c1-s1');
     });
     vi.advanceTimersByTime(10);
     act(() => {
@@ -79,7 +79,7 @@ describe('useTerminalPool', () => {
     });
     expect(result.current.entries).toHaveLength(2);
     // c1 is active, c2 was LRU, c3 is new
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1-0', 'c3-s3-0']);
+    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1', 'c3-s3']);
   });
 
   it('evict removes a specific entry', () => {
@@ -89,9 +89,9 @@ describe('useTerminalPool', () => {
       result.current.ensure({ containerId: 'c2', sessionName: 's2', windowIndex: 0 });
     });
     expect(result.current.entries).toHaveLength(2);
-    act(() => { result.current.evict('c1-s1-0'); });
+    act(() => { result.current.evict('c1-s1'); });
     expect(result.current.entries).toHaveLength(1);
-    expect(result.current.entries[0].key).toBe('c2-s2-0');
+    expect(result.current.entries[0].key).toBe('c2-s2');
   });
 
   it('touch updates lastAccessedAt', () => {
@@ -103,26 +103,28 @@ describe('useTerminalPool', () => {
     // touch debounces within 1s, advance past that
     vi.advanceTimersByTime(1100);
     act(() => {
-      result.current.touch('c1-s1-0');
+      result.current.touch('c1-s1');
     });
     expect(result.current.entries[0].lastAccessedAt).toBeGreaterThan(firstAccess);
   });
 
-  it('ensure evicts sibling windows of the same session', () => {
+  it('ensure updates windowIndex in place for the same session', () => {
     const { result } = renderHook(() => useTerminalPool());
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
     });
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1-0']);
+    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1']);
+    expect(result.current.entries[0].windowIndex).toBe(0);
 
-    // Ensuring a different window of the same session evicts the old one
+    // Ensuring a different window of the same session reuses the entry
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 1 });
     });
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1-1']);
+    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1']);
+    expect(result.current.entries[0].windowIndex).toBe(1);
   });
 
-  it('sibling eviction does not affect entries from different sessions', () => {
+  it('window switch does not affect entries from different sessions', () => {
     const { result } = renderHook(() => useTerminalPool());
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
@@ -131,15 +133,18 @@ describe('useTerminalPool', () => {
     });
     expect(result.current.entries).toHaveLength(3);
 
-    // Switching window in c1/s1 only evicts c1/s1 siblings
+    // Switching window in c1/s1 leaves the other sessions untouched
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 1 });
     });
     expect(result.current.entries.map((e) => e.key)).toEqual([
-      'c1-s2-0',
-      'c2-s1-0',
-      'c1-s1-1',
+      'c1-s1',
+      'c1-s2',
+      'c2-s1',
     ]);
+    expect(result.current.entries.find((e) => e.key === 'c1-s1')!.windowIndex).toBe(1);
+    expect(result.current.entries.find((e) => e.key === 'c1-s2')!.windowIndex).toBe(0);
+    expect(result.current.entries.find((e) => e.key === 'c2-s1')!.windowIndex).toBe(0);
   });
 
   it('switching windows back and forth within same session works', () => {
@@ -147,17 +152,19 @@ describe('useTerminalPool', () => {
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
     });
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1-0']);
+    expect(result.current.entries[0].windowIndex).toBe(0);
 
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 1 });
     });
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1-1']);
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].windowIndex).toBe(1);
 
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
     });
-    expect(result.current.entries.map((e) => e.key)).toEqual(['c1-s1-0']);
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].windowIndex).toBe(0);
   });
 
   it('idle timeout evicts stale entries', () => {
@@ -167,13 +174,13 @@ describe('useTerminalPool', () => {
     act(() => {
       result.current.ensure({ containerId: 'c1', sessionName: 's1', windowIndex: 0 });
       result.current.ensure({ containerId: 'c2', sessionName: 's2', windowIndex: 0 });
-      result.current.setActiveKey('c1-s1-0'); // protect c1
+      result.current.setActiveKey('c1-s1'); // protect c1
     });
     expect(result.current.entries).toHaveLength(2);
     // Advance past idle timeout + eviction interval
     act(() => { vi.advanceTimersByTime(15000); });
     // c2 should be evicted (idle), c1 protected (active)
     expect(result.current.entries).toHaveLength(1);
-    expect(result.current.entries[0].key).toBe('c1-s1-0');
+    expect(result.current.entries[0].key).toBe('c1-s1');
   });
 });

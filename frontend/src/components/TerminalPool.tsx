@@ -22,8 +22,10 @@ export const TerminalPool = forwardRef<TerminalPoolHandle, TerminalPoolProps>(
   function TerminalPool({ entries, activeKey, onActiveWindowChanged, onWindowsChanged }, ref) {
     // Use useState with lazy init to hold the refs map — avoids useRef.current access during render
     const [refsMap] = useState(() => new Map<string, React.RefObject<TerminalHandle | null>>());
-    // Per-terminal file viewing state
-    const [viewingFiles, setViewingFiles] = useState(() => new Map<string, { containerId: string; path: string }>());
+    // Per-window file viewing state, keyed by `${entry.key}::${windowIndex}` —
+    // pool entries are per-session, but the viewer belongs to the window the
+    // file was opened in, so it must hide when another window becomes active.
+    const [viewingFiles, setViewingFiles] = useState(() => new Map<string, { entryKey: string; windowIndex: number; containerId: string; path: string }>());
     // Track which terminals have received their first data
     const [readyKeys, setReadyKeys] = useState<Set<string>>(() => new Set());
     // Track which terminals have been detected as gone (session removed)
@@ -70,16 +72,16 @@ export const TerminalPool = forwardRef<TerminalPoolHandle, TerminalPoolProps>(
       });
       setViewingFiles(prev => {
         let changed = false;
-        for (const key of prev.keys()) {
-          if (!currentKeys.has(key)) {
+        for (const value of prev.values()) {
+          if (!currentKeys.has(value.entryKey)) {
             changed = true;
             break;
           }
         }
         if (!changed) return prev;
         const next = new Map(prev);
-        for (const key of next.keys()) {
-          if (!currentKeys.has(key)) next.delete(key);
+        for (const [key, value] of next) {
+          if (!currentKeys.has(value.entryKey)) next.delete(key);
         }
         return next;
       });
@@ -160,7 +162,12 @@ export const TerminalPool = forwardRef<TerminalPoolHandle, TerminalPoolProps>(
                   visible={isActive}
                   onOpenFile={(path) => setViewingFiles(prev => {
                     const next = new Map(prev);
-                    next.set(entry.key, { containerId: entry.containerId, path });
+                    next.set(`${entry.key}::${entry.windowIndex}`, {
+                      entryKey: entry.key,
+                      windowIndex: entry.windowIndex,
+                      containerId: entry.containerId,
+                      path,
+                    });
                     return next;
                   })}
                   onDownloadFile={(path) => {
@@ -188,29 +195,35 @@ export const TerminalPool = forwardRef<TerminalPoolHandle, TerminalPoolProps>(
                   })}
                 />
               </div>
-              {viewingFiles.has(entry.key) && (
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    display: isActive ? undefined : 'none',
-                    zIndex: 30,
-                  }}
-                >
-                  <FileViewer
-                    containerId={viewingFiles.get(entry.key)!.containerId}
-                    path={viewingFiles.get(entry.key)!.path}
-                    active={isActive}
-                    onClose={() => {
-                      setViewingFiles(prev => {
-                        const next = new Map(prev);
-                        next.delete(entry.key);
-                        return next;
-                      });
-                      requestAnimationFrame(() => refsMap.get(entry.key)?.current?.focus());
-                    }}
-                  />
-                </div>
-              )}
+              {[...viewingFiles.entries()]
+                .filter(([, viewing]) => viewing.entryKey === entry.key)
+                .map(([viewerKey, viewing]) => {
+                  const isVisible = isActive && viewing.windowIndex === entry.windowIndex;
+                  return (
+                    <div
+                      key={viewerKey}
+                      className="absolute inset-0"
+                      style={{
+                        display: isVisible ? undefined : 'none',
+                        zIndex: 30,
+                      }}
+                    >
+                      <FileViewer
+                        containerId={viewing.containerId}
+                        path={viewing.path}
+                        active={isVisible}
+                        onClose={() => {
+                          setViewingFiles(prev => {
+                            const next = new Map(prev);
+                            next.delete(viewerKey);
+                            return next;
+                          });
+                          requestAnimationFrame(() => refsMap.get(entry.key)?.current?.focus());
+                        }}
+                      />
+                    </div>
+                  );
+                })}
             </Fragment>
           );
         })}

@@ -9,12 +9,30 @@ import type { PoolEntry } from '../hooks/useTerminalPool';
 vi.mock('./Terminal', () => ({
   Terminal: vi.fn().mockImplementation(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ({ containerId, sessionName, windowIndex, visible }: any) => (
+    ({ containerId, sessionName, windowIndex, visible, onOpenFile }: any) => (
       <div
         data-testid={`terminal-${containerId}-${sessionName}-${windowIndex}`}
         data-visible={String(visible)}
       >
         Terminal:{containerId}/{sessionName}:{windowIndex}
+        <button
+          data-testid={`open-file-${containerId}-${sessionName}`}
+          onClick={() => onOpenFile?.('/tmp/test.md')}
+        >
+          open
+        </button>
+      </div>
+    )
+  ),
+}));
+
+// Mock FileViewer — it fetches file content over HTTP
+vi.mock('./FileViewer', () => ({
+  FileViewer: vi.fn().mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ containerId, path, active }: any) => (
+      <div data-testid="file-viewer" data-active={String(active)}>
+        Viewer:{containerId}:{path}
       </div>
     )
   ),
@@ -180,5 +198,52 @@ describe('TerminalPool', () => {
     expect(screen.getByTestId('terminal-c1-s1-0').parentElement!.style.visibility).toBe('visible');
     expect(screen.getByTestId('terminal-c2-s2-0').parentElement!.style.visibility).toBe('hidden');
     expect(screen.getByTestId('terminal-c3-s3-0').parentElement!.style.visibility).toBe('hidden');
+  });
+
+  it('hides the file viewer when the active window changes within the same session', async () => {
+    // Pool entries are keyed per session; window switches mutate windowIndex in place
+    const entryWin0: PoolEntry = { key: 'c1-s1', containerId: 'c1', sessionName: 's1', windowIndex: 0, lastAccessedAt: Date.now() };
+    const { rerender } = render(<TestWrapper entries={[entryWin0]} activeKey="c1-s1" />);
+
+    // Open a file while window 0 is active
+    await act(async () => {
+      screen.getByTestId('open-file-c1-s1').click();
+    });
+    const viewer = screen.getByTestId('file-viewer');
+    expect(viewer.parentElement!.style.display).not.toBe('none');
+    expect(viewer.getAttribute('data-active')).toBe('true');
+
+    // Switch to window 1 in the same session (same entry key, new windowIndex)
+    const entryWin1: PoolEntry = { ...entryWin0, windowIndex: 1 };
+    await act(async () => {
+      rerender(<TestWrapper entries={[entryWin1]} activeKey="c1-s1" />);
+    });
+    expect(screen.getByTestId('file-viewer').parentElement!.style.display).toBe('none');
+    expect(screen.getByTestId('file-viewer').getAttribute('data-active')).toBe('false');
+
+    // Switch back to window 0 — the viewer reappears
+    await act(async () => {
+      rerender(<TestWrapper entries={[entryWin0]} activeKey="c1-s1" />);
+    });
+    expect(screen.getByTestId('file-viewer').parentElement!.style.display).not.toBe('none');
+    expect(screen.getByTestId('file-viewer').getAttribute('data-active')).toBe('true');
+  });
+
+  it('hides the file viewer when another session becomes active', async () => {
+    const entries: PoolEntry[] = [
+      { key: 'c1-s1', containerId: 'c1', sessionName: 's1', windowIndex: 0, lastAccessedAt: Date.now() },
+      { key: 'c2-s2', containerId: 'c2', sessionName: 's2', windowIndex: 0, lastAccessedAt: Date.now() },
+    ];
+    const { rerender } = render(<TestWrapper entries={entries} activeKey="c1-s1" />);
+
+    await act(async () => {
+      screen.getByTestId('open-file-c1-s1').click();
+    });
+    expect(screen.getByTestId('file-viewer').parentElement!.style.display).not.toBe('none');
+
+    await act(async () => {
+      rerender(<TestWrapper entries={entries} activeKey="c2-s2" />);
+    });
+    expect(screen.getByTestId('file-viewer').parentElement!.style.display).toBe('none');
   });
 });
