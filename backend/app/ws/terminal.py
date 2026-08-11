@@ -56,7 +56,7 @@ async def _create_view_session(
         stderr=asyncio.subprocess.DEVNULL,
         env=_clean_env(),
     )
-    await proc.wait()
+    await asyncio.wait_for(proc.wait(), timeout=10.0)
     if proc.returncode != 0:
         raise RuntimeError(f"Failed to create view session for {original_session}")
     return view_name
@@ -71,7 +71,7 @@ async def _kill_view_session(tmux_prefix: list[str], view_name: str) -> None:
             stderr=asyncio.subprocess.DEVNULL,
             env=_clean_env(),
         )
-        await proc.wait()
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
 
 
 async def _set_tmux_extended_keys(tmux_prefix: list[str]) -> None:
@@ -86,8 +86,8 @@ async def _set_tmux_extended_keys(tmux_prefix: list[str]) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await proc.wait()
-    except OSError:
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
+    except (OSError, asyncio.TimeoutError):
         pass  # tmux may not support extended-keys on older versions
 
 
@@ -100,9 +100,9 @@ async def _is_alternate_screen(tmux_prefix: list[str], session_name: str) -> boo
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        stdout, _ = await proc.communicate()
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5.0)
         return stdout.decode().strip() == "1"
-    except OSError:
+    except (OSError, asyncio.TimeoutError):
         return False
 
 
@@ -115,8 +115,8 @@ async def _set_tmux_passthrough(tmux_prefix: list[str]) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await proc.wait()
-    except OSError:
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
+    except (OSError, asyncio.TimeoutError):
         pass
 
 
@@ -128,7 +128,7 @@ async def _set_tmux_monitor_activity(tmux_prefix: list[str]) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await proc.wait()
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
         # Set activity-action to none so tmux sets the window flag
         # without generating any alert (no bell, no status message).
         proc = await asyncio.create_subprocess_exec(
@@ -136,8 +136,8 @@ async def _set_tmux_monitor_activity(tmux_prefix: list[str]) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await proc.wait()
-    except OSError:
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
+    except (OSError, asyncio.TimeoutError):
         pass
 
 
@@ -145,7 +145,8 @@ async def _set_tmux_auto_rename(tmux_prefix: list[str]) -> None:
     """Set automatic-rename-format for descriptive window titles."""
     from .. import store
     from ..services.tmux_manager import DEFAULT_AUTO_RENAME_FORMAT
-    fmt = store.get_settings().get("tmuxAutoRenameFormat", "")
+    settings = await asyncio.to_thread(store.get_settings)
+    fmt = settings.get("tmuxAutoRenameFormat", "")
     fmt = fmt if fmt else DEFAULT_AUTO_RENAME_FORMAT
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -153,14 +154,14 @@ async def _set_tmux_auto_rename(tmux_prefix: list[str]) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await proc.wait()
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
         proc = await asyncio.create_subprocess_exec(
             *tmux_prefix, "set-option", "-gw", "automatic-rename-format", fmt,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await proc.wait()
-    except OSError:
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
+    except (OSError, asyncio.TimeoutError):
         pass
 
 
@@ -497,7 +498,7 @@ async def _pty_terminal(
                                 stdout=asyncio.subprocess.DEVNULL,
                                 stderr=asyncio.subprocess.DEVNULL,
                             )
-                            await dm_proc.wait()
+                            await asyncio.wait_for(dm_proc.wait(), timeout=5.0)
                             await websocket.send_text("MOUSE_WARNING:off")
                         except (ValueError, OSError) as e:
                             logger.debug("%s disable-mouse failed: %s", label, e)
