@@ -95,10 +95,39 @@
           '';
         };
 
+        # Bridge agent — connects remote tmux to TmuxDeck server
+        bridgeSrc = pkgs.stdenv.mkDerivation {
+          pname = "tmuxdeck-bridge-src";
+          version = "0.1.0";
+          src = ./bridge;
+          dontBuild = true;
+          installPhase = ''
+            runHook preInstall
+            mkdir -p $out/lib/tmuxdeck-bridge
+            cp -r . $out/lib/tmuxdeck-bridge/
+            runHook postInstall
+          '';
+        };
+
+        bridgePython = python.withPackages (ps: with ps; [
+          websockets
+          docker
+          uvloop
+        ]);
+
+        bridge = pkgs.writeShellApplication {
+          name = "tmuxdeck-bridge";
+          runtimeInputs = [ bridgePython pkgs.tmux ];
+          text = ''
+            export PYTHONPATH="${bridgeSrc}/lib/tmuxdeck-bridge"
+            exec python -m tmuxdeck_bridge "$@"
+          '';
+        };
+
       in
       {
         packages = {
-          inherit frontend backend tmuxdeck;
+          inherit frontend backend tmuxdeck bridge;
           default = tmuxdeck;
         };
 
